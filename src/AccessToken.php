@@ -111,7 +111,8 @@ class AccessToken {
         if( empty(self::$config['access_token_filename']) ) {
             throw new \Exception("Access token filename missing");
         }
-        return  __DIR__ . DIRECTORY_SEPARATOR . self::$config['access_token_filename'];
+        $tmpDir = rtrim(sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR;
+        return  $tmpDir . self::$config['access_token_filename'];
     }
 
     private static function cacheAccessToken($data)

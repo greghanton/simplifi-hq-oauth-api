@@ -21,9 +21,10 @@ return [
 
     
     /*
-     * File location to store a cached access token
+     * Temp file name to store a cached access token
+     * This will be created in sys_get_temp_dir()
      */
-    'access_token_filename' => "access-token.php",
+    'access_token_filename' => "ua-access-token.php",
 
     
     /*
