@@ -1,0 +1,12 @@
+{
+    "name": "TheoGibbons\\UberAccountingApi",
+    "version": "master",
+    "autoload": {
+        "psr-4": {
+            "TheoGibbons\\UberAccountingApi\\": "src"
+        }
+    },
+    "require": {
+        "php-curl-class/php-curl-class": "*"
+    }
+}
