@@ -1,6 +1,6 @@
 <?php
 
-namespace TheoGibbons\UberAccountingApi;
+namespace UberAccountingApi;
 
 use Curl\Curl;
 
@@ -50,6 +50,16 @@ class ApiResponse
             $errors = array_merge($errors, $this->errors);
         }
         return $errors;
+    }
+
+    public function errorsToString($glue = ", ")
+    {
+        $errors = $this->errors();
+        $response = [];
+        foreach($errors as $error) {
+            $response[] = $error['title'];
+        }
+        return implode($glue, $response);
     }
 
     public function header() {

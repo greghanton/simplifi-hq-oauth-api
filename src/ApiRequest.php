@@ -1,6 +1,6 @@
 <?php
 
-namespace TheoGibbons\UberAccountingApi;
+namespace UberAccountingApi;
 
 use Curl\Curl;
 

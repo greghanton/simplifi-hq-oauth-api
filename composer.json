@@ -1,9 +1,8 @@
 {
-    "name": "TheoGibbons\\UberAccountingApi",
-    "version": "master",
+    "name": "greghanton/uberaccounting-oauth-api",
     "autoload": {
         "psr-4": {
-            "TheoGibbons\\UberAccountingApi\\": "src"
+            "UberAccountingApi\\": "src"
         }
     },
     "require": {
