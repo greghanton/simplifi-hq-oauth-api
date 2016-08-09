@@ -71,6 +71,31 @@ class ApiResponse
     }
 
     /**
+     * @param int $opt see http://php.net/manual/en/function.curl-getinfo.php
+     * @return mixed
+     * @see http://php.net/manual/en/function.curl-getinfo.php
+     */
+    public function getCurlInfo($opt) {
+        return $this->curl->getInfo($opt);
+    }
+
+    public function getRequestUrl() {
+        return $this->getCurlInfo(CURLINFO_EFFECTIVE_URL);
+    }
+
+    public function getHttpCode() {
+        return $this->getCurlInfo(CURLINFO_HTTP_CODE);
+    }
+
+    public function serialise() {
+        return [
+            'url'       => $this->getRequestUrl(),
+            'http-code' => $this->getHttpCode(),
+            'response'  => $this->response(),
+        ];
+    }
+
+    /**
      * Override the success() response
      * @param $false
      */
