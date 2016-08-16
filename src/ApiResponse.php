@@ -12,10 +12,11 @@ class ApiResponse
     private $forceSuccess = null;
     private $requestOptions;
 
-    public function __construct($config, Curl $curl)
+    public function __construct($config, Curl $curl, $requestOptions)
     {
         $this->curl = $curl;
         $this->config = $config;
+        $this->requestOptions = $requestOptions;
         return $this;
     }
 
@@ -120,7 +121,7 @@ class ApiResponse
     public function __get($name)
     {
 //        echo "Getting '$name'\n";
-        $response = self::response();
+        $response = $this->response();
         if (isset($response->{$name})) {
             return $response->{$name};
         }
@@ -132,6 +133,71 @@ class ApiResponse
             ' on line ' . $trace[0]['line'],
             E_USER_NOTICE);
         return null;
+    }
+
+    /**
+     * Return an ApiResponse for the next page of this request.
+     * This should only be used for paginated results.
+     * Returns FALSE if request is not paginated or there are no more pages
+     *
+     * @return bool|ApiResponse TRUE: If there in another page and it was successfully received.
+     * @throws \Exception
+     */
+    public function nextPage()
+    {
+        if($this->hasNextPage()) {
+            // modify the request so it will get the next page
+            $requestOptions = $this->requestOptions;
+            $requestOptions['data']['page'] = $this->getCurrentPage() + 1;
+
+            $response = ApiRequest::request($requestOptions);
+            if (!$response->success()) {
+                throw new \Exception("Unknown error while getting next page from API.");
+            }
+
+            return $response;
+
+        } else {
+            return false;
+        }
+    }
+
+    private function hasNextPage()
+    {
+        return $this->property('paginator') && $this->property('paginator', 'current_page') < $this->property('paginator', 'total_pages');
+    }
+
+    private function getCurrentPage()
+    {
+        if(!$this->paginator) {
+            throw new \Exception("Attempted to get the page number for a non paginated response.");
+        }
+        return $this->paginator->current_page;
+    }
+
+    private function property()
+    {
+        $args = func_get_args();
+        $response = $this->response();
+        foreach($args as $value) {
+
+            if (isset($response->{$value})) {
+                $response = $response->{$value};
+            } else {
+                $trace = debug_backtrace();
+                trigger_error(
+                    'Undefined property via property(): ' .
+                    implode('->', $args) .
+                    ' (' . $value . ')' .
+                    ' in ' . $trace[0]['file'] .
+                    ' on line ' . $trace[0]['line'],
+                    E_USER_NOTICE);
+                $response = null;
+                break;
+            }
+
+        }
+        return $response;
     }
 
 }

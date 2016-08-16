@@ -101,22 +101,18 @@ class ApiRequest
         $curl->setOpt(CURLOPT_SSL_VERIFYPEER, false);
         $curl->setOpt(CURLOPT_SSL_VERIFYHOST, false);
         //$curl->setOpt(CURLOPT_FOLLOWLOCATION, true);
-        
-        $response = new ApiResponse($config, $curl);
-        $response->setCurl($curl);
-        $response->setRequestOptions($options);
 
         switch (strtoupper($options['method'])) {
             case('GET'):
 
                 $curl->get($config['url-base'] . $options['url'], $options['data']);
-                return new ApiResponse($config, $curl);
+                return new ApiResponse($config, $curl, $options);
 
                 break;
             case('POST'):
 
                 $curl->post($config['url-base'] . $options['url'], $options['data']);
-                return new ApiResponse($config, $curl);
+                return new ApiResponse($config, $curl, $options);
 
                 break;
             case('PUT'):
