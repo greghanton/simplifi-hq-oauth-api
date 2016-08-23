@@ -120,19 +120,17 @@ class ApiResponse
      */
     public function __get($name)
     {
-//        echo "Getting '$name'\n";
-        $response = $this->response();
-        if (isset($response->{$name})) {
-            return $response->{$name};
-        }
+        return $this->property($name);
 
-        $trace = debug_backtrace();
-        trigger_error(
-            'Undefined property via __get(): ' . $name .
-            ' in ' . $trace[0]['file'] .
-            ' on line ' . $trace[0]['line'],
-            E_USER_NOTICE);
-        return null;
+////        echo "Getting '$name'\n";
+//        $response = $this->response();
+//        if (array_key_exists('invoice-number', (array)$response)) { // Cannot use isset() here because if fails on NULL
+//            return $response->{$name};
+//        }
+//
+//        $this->triggerError("Undefined property via __get()", debug_backtrace(), __CLASS__, __FUNCTION__, func_get_args());
+//
+//        return null;
     }
 
     /**
@@ -175,29 +173,52 @@ class ApiResponse
         return $this->paginator->current_page;
     }
 
+    /**
+     * Basically the same as __get() except you can get sub properties
+     * e.g.
+     * $currentPage = $this->property('paginator', 'current_page')
+     * @return mixed NULL: if the property could not be found
+     */
     private function property()
     {
         $args = func_get_args();
         $response = $this->response();
         foreach($args as $value) {
 
-            if (isset($response->{$value})) {
+            if (array_key_exists($value, (array)$response)) { // Cannot use isset() here because if fails on NULL
                 $response = $response->{$value};
             } else {
-                $trace = debug_backtrace();
-                trigger_error(
-                    'Undefined property via property(): ' .
-                    implode('->', $args) .
-                    ' (' . $value . ')' .
-                    ' in ' . $trace[0]['file'] .
-                    ' on line ' . $trace[0]['line'],
-                    E_USER_NOTICE);
+
+                $this->triggerError("Undefined property ($value)", debug_backtrace(), __CLASS__, __FUNCTION__, func_get_args());
                 $response = null;
                 break;
+
             }
 
         }
         return $response;
+    }
+
+    private function triggerError($message, $debugBackTrace, $class, $functionName, $functionArgs)
+    {
+
+        $externalTraceId = 0;
+        while($debugBackTrace[$externalTraceId]['class'] === $class) {
+            if(count($debugBackTrace) > $externalTraceId+1) {
+                $externalTraceId++;
+            } else {
+                $externalTraceId = 0;
+                break;
+            }
+        }
+
+        trigger_error(
+            $message .
+            " in {$functionName}(" . implode(", ", $functionArgs) . ")" .
+            " in {$debugBackTrace[0]['file']}:{$debugBackTrace[0]['line']}" .
+            " called from {$debugBackTrace[$externalTraceId]['file']}:{$debugBackTrace[$externalTraceId]['line']}",
+            E_USER_NOTICE);
+
     }
 
 }
