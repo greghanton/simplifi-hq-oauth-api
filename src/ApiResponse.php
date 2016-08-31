@@ -42,29 +42,30 @@ class ApiResponse
      */
     public function errors() {
         $errors = [];
-        if($this->curl->error) {
+        if( array_key_exists('errors', (array)$this->response()) ) {
+            $errors = array_merge($errors, json_decode(json_encode($this->errors), true));      // Cast ->errors to array
+        }
+        if(count($errors) === 0 && $this->curl->error) {
             $errors[] = [
                 'title' => $this->curl->errorCode . ': ' . $this->curl->errorMessage,
             ];
-        }
-        if( isset($this->errors) ) {
-            $errors = array_merge($errors, $this->errors);
         }
         return $errors;
     }
 
     public function errorsToString($glue = ", ")
     {
+        return implode($glue, $this->getSimpleErrorsArray());
+    }
+
+    public function getSimpleErrorsArray()
+    {
         $errors = $this->errors();
         $response = [];
         foreach($errors as $error) {
             $response[] = $error['title'];
         }
-        return implode($glue, $response);
-    }
-
-    public function header() {
-        return $this->curl->response;
+        return $response;
     }
 
     public function getCurl() {

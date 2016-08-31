@@ -46,11 +46,12 @@ class AccessToken {
             $accessToken = require(self::getAccessTokenFilePath());
 
             // Ignore any access token that has expired or is about to expire
-            if(!empty($accessToken->access_token) &&
-                strtotime($accessToken->expires_at) < time() - self::$config['access_token_expire_buffer']
+            if(!empty($accessToken['access_token']) &&
+                is_int($accessToken['expires_at']) &&
+                $accessToken['expires_at'] > time() - self::$config['access_token_expire_buffer']
             ) {
                 // Success we have found a previously generated access token that has not yet expired
-                return $accessToken->access_token;
+                return $accessToken['access_token'];
             }
 
         }
@@ -90,6 +91,9 @@ class AccessToken {
                 $apiResponse->setSuccess(false);
                 return $apiResponse;
             }
+
+            // Set expires_at
+            $data->expires_at = time() + $data->expires_in;
 
             if($andCache) {
 
