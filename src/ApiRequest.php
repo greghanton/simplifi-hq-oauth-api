@@ -117,6 +117,9 @@ class ApiRequest
                 break;
             case('PUT'):
 
+                $curl->put($config['url-base'] . $options['url'], $options['data']);
+                return new ApiResponse($config, $curl, $options);
+
                 break;
             case('OPTIONS'):
 
