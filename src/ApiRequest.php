@@ -126,6 +126,9 @@ class ApiRequest
                 break;
             case('DELETE'):
 
+                $curl->delete($config['url-base'] . $options['url'], null, $options['data']);
+                return new ApiResponse($config, $curl, $options);
+
                 break;
             case('HEAD'):
 
