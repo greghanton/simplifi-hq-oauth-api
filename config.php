@@ -17,7 +17,13 @@ return [
     /*
      * URL base
      */
-    'url-base'  => 'https://api.uberaccounting.co.uk/api/v1/',
+    'url-base'  => (
+    is_callable ('App', 'environment') && App::environment('local') &&
+        ($_SERVER['REMOTE_ADDR'] === '127.0.0.1')       // TODO remove this when we go live
+            ?
+            'https://api-local.uberaccounting.co.uk/api/v1/' :      // Running in Laravel and it is local
+            'https://api.uberaccounting.co.uk/api/v1/'
+    ),
 
     
     /*
