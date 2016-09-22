@@ -48,7 +48,18 @@ class ApiRequest
          *
          * This MUST BE PASSED IN via $options in self::request()
          */
-        //'data'            => [],
+        'data'            => [],
+
+        /**
+         * Any headers to pass add to the curl requestData to be send as payload or querystring along with the request
+         * This can be used for any request GET/POST/etc.
+         * May be:
+         *      Array: of key value pairs ready for http_build_query()
+         *      String: To be set as the request payload e.g. for a json request
+         *
+         * This MUST BE PASSED IN via $options in self::request()
+         */
+        'headers'            => [],
 
         /**
          * Automatically add access token to the request
@@ -70,27 +81,29 @@ class ApiRequest
      * Do a request
      *
      * @param array $options check $defaultRequestOptions for a list of available options
+     * @param array $overrideConfig
      * @return ApiResponse result from the request i.e. check ->success() to see if it was successful
      * @throws \Exception
      * @see $defaultRequestOptions
      */
-    public static function request($options)
+    public static function request($options, $overrideConfig = [])
     {
-        $config = self::getConfig();
+        $config = self::getConfig($overrideConfig);
 
         $options = array_merge(self::$defaultRequestOptions, $options);
 
         if ($options['with-access-token'] && !isset($options['data']['access_token'])) {
             $accessToken = self::getAccessToken();
             if (is_string($accessToken)) {
-                $options['data']['access_token'] = $accessToken;
+//                $options['data']['access_token'] = $accessToken;
+                $options['headers']['Authorization'] = 'Bearer '.$accessToken;
             } else {
                 // An error occurred while getting access token so return the ApiResponse from getAccessToken
                 return $accessToken;
             }
         }
 
-        if( !isset($options['url']) ) {
+        if( !isset($options['url']) && !isset($options['url-absolute']) ) {
             throw new \Exception("ERROR: Url not specified for curl request.");
         }
 
@@ -102,22 +115,34 @@ class ApiRequest
         $curl->setOpt(CURLOPT_SSL_VERIFYHOST, false);
         //$curl->setOpt(CURLOPT_FOLLOWLOCATION, true);
 
+        if( isset($options['url-absolute']) ) {
+            $url = $config['url-base'] . $options['url-absolute'];
+        } else {
+            $url = $config['url-base'] . $config['url-version'] . $options['url'];
+        }
+
+        if(isset($options['headers'])) {
+            foreach($options['headers'] as $key => $value) {
+                $curl->setHeader($key, $value);
+            }
+        }
+
         switch (strtoupper($options['method'])) {
             case('GET'):
 
-                $curl->get($config['url-base'] . $options['url'], $options['data']);
+                $curl->get($url, $options['data']);
                 return new ApiResponse($config, $curl, $options);
 
                 break;
             case('POST'):
 
-                $curl->post($config['url-base'] . $options['url'], $options['data']);
+                $curl->post($url, $options['data']);
                 return new ApiResponse($config, $curl, $options);
 
                 break;
             case('PUT'):
 
-                $curl->put($config['url-base'] . $options['url'], $options['data']);
+                $curl->put($url, $options['data']);
                 return new ApiResponse($config, $curl, $options);
 
                 break;
@@ -126,7 +151,7 @@ class ApiRequest
                 break;
             case('DELETE'):
 
-                $curl->delete($config['url-base'] . $options['url'], null, $options['data']);
+                $curl->delete($url, null, $options['data']);
                 return new ApiResponse($config, $curl, $options);
 
                 break;
@@ -145,10 +170,13 @@ class ApiRequest
      * Grab the config out of the config.php file and store it in $config field
      * @return mixed|null
      */
-    private static function getConfig()
+    private static function getConfig($overrideConfig = [])
     {
         if(!self::$config) {
             self::$config = require(self::CONFIG_FILE);
+        }
+        if($overrideConfig) {
+            self::$config = array_merge(self::$config, $overrideConfig);
         }
         return self::$config;
     }

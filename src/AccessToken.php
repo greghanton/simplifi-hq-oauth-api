@@ -73,15 +73,21 @@ class AccessToken {
 
         $apiResponse = ApiRequest::request([
             'method'            => 'POST',
-            'url'               => 'oauth/access_token',
+            'url-absolute'      => 'oauth/token',
             'with-access-token' => false,
             'data'              => [
-                'grant_type'    => 'client_credentials',
+                'grant_type'    => 'password',
                 'client_id'     => self::$config['client_id'],
                 'client_secret' => self::$config['client_secret'],
+                'username'      => self::$config['username'],
+                'password'      => self::$config['password'],
+                'scope'         => '*',
+
+                //'grant_type'    => 'client_credentials',
+                //'client_id'     => self::$config['client_id'],
+                //'client_secret' => self::$config['client_secret'],
             ],
         ]);
-
         if( $apiResponse->success() ) {
 
             $data = $apiResponse->response();

@@ -5,25 +5,37 @@ return [
     /*
      * Client id for Uber Accounting API OAuth
      */
-    'client_id'  => '1',
+    'client_id'  => env('UBER_API_CLIENT_ID'),
 
 
     /*
      * Client secret for Uber Accounting API OAuth
      */
-    'client_secret'  => '123',
+    'client_secret'  => env('UBER_API_CLIENT_SECRET'),
+
+
+    /*
+     * Username for Uber Accounting API OAuth
+     */
+    'username'  => env('UBER_API_USERNAME'),
+
+
+    /*
+     * Password for Uber Accounting API OAuth
+     */
+    'password'  => env('UBER_API_PASSWORD'),
 
 
     /*
      * URL base
      */
-    'url-base'  => (
-    is_callable ('App', 'environment') && App::environment('local') &&
-        ($_SERVER['REMOTE_ADDR'] === '127.0.0.1')       // TODO remove this when we go live
-            ?
-            'https://api-local.uberaccounting.co.uk/api/v1/' :      // Running in Laravel and it is local
-            'https://api.uberaccounting.co.uk/api/v1/'
-    ),
+    'url-base'  => env('UBER_URL_BASE', 'https://api.uberaccounting.co.uk/'),
+
+
+    /*
+     * URL version (will be appended to the url-base)
+     */
+    'url-version'  => 'api/v1/',
 
     
     /*
