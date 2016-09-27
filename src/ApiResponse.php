@@ -222,4 +222,8 @@ class ApiResponse
 
     }
 
+    public function dd() {
+        dj($this->serialise());
+    }
+
 }
