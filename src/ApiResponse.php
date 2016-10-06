@@ -65,6 +65,12 @@ class ApiResponse
         foreach($errors as $error) {
             $response[] = $error['title'];
         }
+
+        // If no error messages were found but the request was not a success then add a default error message.
+        if( count($response) === 0 && !$this->success() ) {
+            $response[] = "Unknown error occurred.";
+        }
+
         return $response;
     }
 
@@ -211,6 +217,15 @@ class ApiResponse
                 $externalTraceId = 0;
                 break;
             }
+        }
+
+        $externalTraceId = $externalTraceId > 0 ? $externalTraceId - 1 : 0;
+
+        while($externalTraceId > 0 &&
+            (!isset($debugBackTrace[$externalTraceId]['file']) &&
+            !isset($debugBackTrace[$externalTraceId]['line']))
+        ) {
+            $externalTraceId--;
         }
 
         trigger_error(
