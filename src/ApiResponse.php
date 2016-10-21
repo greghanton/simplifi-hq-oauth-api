@@ -100,6 +100,7 @@ class ApiResponse implements \JsonSerializable
             'url'       => $this->getRequestUrl(),
             'http-code' => $this->getHttpCode(),
             'response'  => $this->response(),
+            'requestData'   => $this->getRequestContent(),
         ];
     }
 
@@ -115,6 +116,11 @@ class ApiResponse implements \JsonSerializable
     public function setCurl($curl)
     {
         $this->curl = $curl;
+    }
+
+    public function getRequestContent()
+    {
+        return $this->requestOptions;
     }
 
     public function setRequestOptions($options)
