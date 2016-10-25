@@ -95,12 +95,17 @@ class ApiResponse implements \JsonSerializable
         return $this->getCurlInfo(CURLINFO_HTTP_CODE);
     }
 
+    public function getMethod() {
+        return $this->requestOptions['method'];
+    }
+
     public function serialise() {
         return [
-            'url'       => $this->getRequestUrl(),
-            'http-code' => $this->getHttpCode(),
-            'response'  => $this->response(),
-            'requestData'   => $this->getRequestContent(),
+            'url'         => $this->getRequestUrl(),
+            'http-code'   => $this->getHttpCode(),
+            'method'      => $this->getMethod(),
+            'response'    => $this->response(),
+            'requestData' => $this->getRequestContent(),
         ];
     }
 
