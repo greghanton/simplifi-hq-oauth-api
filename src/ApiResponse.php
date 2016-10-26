@@ -221,13 +221,18 @@ class ApiResponse implements \JsonSerializable
     {
 
         $externalTraceId = 0;
-        while($debugBackTrace[$externalTraceId]['class'] === $class) {
-            if(count($debugBackTrace) > $externalTraceId+1) {
-                $externalTraceId++;
-            } else {
-                $externalTraceId = 0;
-                break;
+        while(true) {
+            if( isset($debugBackTrace[$externalTraceId + 1]['class']) ) {
+                if($debugBackTrace[$externalTraceId]['class'] === $class) {
+                    if(count($debugBackTrace) > $externalTraceId+1) {
+                        $externalTraceId++;
+                        continue;
+                    }
+                }
             }
+
+            $externalTraceId = 0;
+            break;
         }
 
         $externalTraceId = $externalTraceId > 0 ? $externalTraceId - 1 : 0;
