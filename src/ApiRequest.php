@@ -160,6 +160,9 @@ class ApiRequest
                 break;
             case('PATCH'):
 
+                $curl->patch($url, $options['data']);
+                return new ApiResponse($config, $curl, $options);
+
                 break;
         }
 
