@@ -4,6 +4,10 @@ namespace UberAccountingApi;
 
 use Curl\Curl;
 
+/**
+ * Class ApiRequest
+ * @package UberAccountingApi
+ */
 class ApiRequest
 {
 
@@ -81,10 +85,12 @@ class ApiRequest
      * Do a request
      *
      * @param array $options check $defaultRequestOptions for a list of available options
-     * @param array $overrideConfig
-     * @return ApiResponse result from the request i.e. check ->success() to see if it was successful
-     * @throws \Exception
+     * @param array $overrideConfig This will override options in the config.php file if you want
+     *      This will almost never by passed in
+     * @return ApiResponse result from the request i.e. check ApiResponse::success() to see if it was successful
+     * @throws \Exception if url not specified
      * @see $defaultRequestOptions
+     * @see ApiResponse::success()
      */
     public static function request($options, $overrideConfig = [])
     {
@@ -171,7 +177,11 @@ class ApiRequest
 
     /**
      * Grab the config out of the config.php file and store it in $config field
+     *
+     * @param array $overrideConfig if you want to override any values in the config.php file.
+     *      This wont usually be passed in
      * @return mixed|null
+     * @see $config
      */
     private static function getConfig($overrideConfig = [])
     {
@@ -185,7 +195,10 @@ class ApiRequest
     }
 
     /**
-     * @return ApiResponse|string
+     * Return the current access token for the API, or regenerate a new one and return that.
+     *
+     * @return ApiResponse|string string: success. ApiResponse: failed
+     * @see AccessToken::getAccessToken()
      */
     public static function getAccessToken()
     {

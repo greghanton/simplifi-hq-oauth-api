@@ -2,24 +2,36 @@
 
 namespace UberAccountingApi;
 
+/**
+ * Class AccessToken
+ *
+ * Access token will be cached in '%temp%/ua-access-token.php' file
+ *
+ * @package UberAccountingApi
+ */
 class AccessToken {
 
+    /**
+     * @var array
+     * @see ApiRequest::$config
+     */
     private static $config;
 
     /**
      * Get access token.
      * First try from from cache (config.php 'access_token_filename')
      * If we cant get it from there then generate a new one
-     * @param $config
+     *
+     * @param array $config see ApiRequest::$config
      * @return ApiResponse|string
      *      string: (success) newly generated access_token
      *      ApiResponse: (failed) We could not generate an access_token for some reason so return the ApiResponse from
      *          the failed request to generate one
      * @throws \Exception
+     * @see ApiRequest::$config
      */
     public static function getAccessToken($config)
     {
-
         self::$config = $config;
 
         // First Attempt to get an access_token from the json file
@@ -34,12 +46,13 @@ class AccessToken {
     /**
      * Attempt to get cached access token in config.php 'access_token_filename'
      * Only return an access token if it isn't about to expire
+     *
      * @return string|null
      *      String: access_token.
      *      NULL: we could not get an access token
      */
-    private static function getCachedAccessToken() {
-
+    private static function getCachedAccessToken()
+    {
         if(file_exists(self::getAccessTokenFilePath())) {
 
             // the cache file exists
@@ -61,6 +74,7 @@ class AccessToken {
 
     /**
      * Generate a new access token through the Uber Accounting API and cache
+     *
      * @param bool $andCache Cache the resulting acess_token in config.php 'access_token_filename'
      * @return ApiResponse|string
      *      string: (success) newly generated access_token
@@ -70,7 +84,6 @@ class AccessToken {
      */
     private static function generateNewAccessToken($andCache = false)
     {
-
         $apiResponse = ApiRequest::request([
             'method'            => 'POST',
             'url-absolute'      => 'oauth/token',
@@ -116,6 +129,12 @@ class AccessToken {
         }
     }
 
+    /**
+     * Get the absolute path to the access token file location
+     *
+     * @return string e.g. 'G:/Windows/Temp/ua-access-token.php'
+     * @throws \Exception
+     */
     private static function getAccessTokenFilePath()
     {
         if( empty(self::$config['access_token_filename']) ) {
@@ -125,6 +144,17 @@ class AccessToken {
         return  $tmpDir . self::$config['access_token_filename'];
     }
 
+    /**
+     * Cache the access token in the getAccessTokenFilePath() file
+     *
+     * @param array $data probably of the form [
+     *          'token_type' => 'Bearer',
+     *          'expires_in' => 3155673599,
+     *          'access_token' => '...',
+     *          'refresh_token' => '...',
+     *          'expires_at' => 4630717897,
+     *      ]
+     */
     private static function cacheAccessToken($data)
     {
         if( ! @file_put_contents(self::getAccessTokenFilePath(), '<?php return ' . var_export((array)$data, true) . ';') ) {

@@ -4,14 +4,38 @@ namespace UberAccountingApi;
 
 use Curl\Curl;
 
+/**
+ * Class ApiResponse
+ * @package UberAccountingApi
+ */
 class ApiResponse implements \JsonSerializable
 {
 
+    /**
+     * @var Curl
+     */
     private $curl;
+    /**
+     * @var array
+     */
     private $config;
+    /**
+     * @var boolean
+     */
     private $forceSuccess = null;
+    /**
+     * @var array
+     */
     private $requestOptions;
 
+    /**
+     * ApiResponse constructor.
+     *
+     * @param array $config This is the config array from the ../config.php file (sometimes some values will be
+     *      overridden by the user but usually it is exactly the array from the file)
+     * @param Curl $curl instance of the php-curl-class/php-curl-class librarys Curl class
+     * @param array $requestOptions this contains the request method, url etc @see ApiRequest::$defaultRequestOptions
+     */
     public function __construct($config, Curl $curl, $requestOptions)
     {
         $this->curl = $curl;
@@ -20,6 +44,15 @@ class ApiResponse implements \JsonSerializable
         return $this;
     }
 
+    /**
+     * Check if there was an error with the request e.g. a 404 occurred
+     * Will return true if http response code is not in 4xx or 5xx AND there was no curl_errno() e.g. 404
+     *
+     * NOTE: The Uber Accounting API is setup so that if an errors occur it will return a status code of not 200
+     *      and will set the "errors" array element
+     *
+     * @return bool
+     */
     public function success() {
         if($this->forceSuccess !== null) {
             return $this->forceSuccess;
@@ -28,6 +61,11 @@ class ApiResponse implements \JsonSerializable
         }
     }
 
+    /**
+     * Get the raw response (e.g. if 'Content-Type:application/json' then a json_decode() result is returned)
+     *
+     * @return mixed
+     */
     public function response() {
         return $this->curl->response;
     }
@@ -53,11 +91,24 @@ class ApiResponse implements \JsonSerializable
         return $errors;
     }
 
+    /**
+     * Return $this->getSimpleErrorsArray() as an imploded string
+     *
+     * @param string $glue
+     * @return string
+     * @see getSimpleErrorsArray()
+     */
     public function errorsToString($glue = ", ")
     {
         return implode($glue, $this->getSimpleErrorsArray());
     }
 
+    /**
+     * Return a simple array of error title's
+     *
+     * @return string[] an array of strings
+     * @see errors()
+     */
     public function getSimpleErrorsArray()
     {
         $errors = $this->errors();
@@ -74,11 +125,19 @@ class ApiResponse implements \JsonSerializable
         return $response;
     }
 
+    /**
+     * Return the Curl object
+     *
+     * @return Curl
+     * @see curl
+     */
     public function getCurl() {
         return $this->curl;
     }
 
     /**
+     * Just like php's native curl_getinfo()
+     *
      * @param int $opt see http://php.net/manual/en/function.curl-getinfo.php
      * @return mixed
      * @see http://php.net/manual/en/function.curl-getinfo.php
@@ -87,54 +146,95 @@ class ApiResponse implements \JsonSerializable
         return $this->curl->getInfo($opt);
     }
 
+    /**
+     * Get the full url of the request
+     * useful for debugging
+     *
+     * @return string
+     */
     public function getRequestUrl() {
         return $this->getCurlInfo(CURLINFO_EFFECTIVE_URL);
     }
 
+    /**
+     * Get the http response code e.g. 200 for success
+     *
+     * @return integer
+     */
     public function getHttpCode() {
         return $this->getCurlInfo(CURLINFO_HTTP_CODE);
     }
 
+    /**
+     * Get the http request method used e.g. 'POST'
+     *
+     * @return string
+     */
     public function getMethod() {
         return $this->requestOptions['method'];
     }
 
+    /**
+     * Serialise the object
+     * useful for debugging
+     *
+     * @return array
+     */
     public function serialise() {
         return [
-            'url'         => $this->getRequestUrl(),
-            'http-code'   => $this->getHttpCode(),
-            'method'      => $this->getMethod(),
-            'response'    => $this->response(),
-            'requestData' => $this->getRequestContent(),
+            'url'            => $this->getRequestUrl(),
+            'http-code'      => $this->getHttpCode(),
+            'method'         => $this->getMethod(),
+            'response'       => $this->response(),
+            'requestOptions' => $this->getRequestOptions(),
         ];
     }
 
     /**
      * Override the success() response
-     * @param $false
+     *
+     * @param boolean $success
      */
     public function setSuccess($success)
     {
         $this->forceSuccess = $success;
     }
 
+    /**
+     * @param Curl $curl
+     * @see $curl
+     */
     public function setCurl($curl)
     {
         $this->curl = $curl;
     }
 
-    public function getRequestContent()
+    /**
+     * @return array
+     * @see requestOptions
+     */
+    public function getRequestOptions()
     {
         return $this->requestOptions;
     }
 
+    /**
+     * @param array $options
+     * @see requestOptions
+     */
     public function setRequestOptions($options)
     {
         $this->requestOptions = $options;
     }
 
     /**
+     * Magic method to get a value of a request
+     * e.g. $response->data
+     * e.g. $response->data->id
+     * e.g. $response->paginator->total_count
+     *
      * @return ApiResponse|string
+     * @see property()
      */
     public function __get($name)
     {
@@ -178,11 +278,24 @@ class ApiResponse implements \JsonSerializable
         }
     }
 
+    /**
+     * Does this request have another page?
+     * Should only be called on paginated endpoint responses
+     *
+     * @return bool
+     */
     private function hasNextPage()
     {
         return $this->property('paginator') && $this->property('paginator', 'current_page') < $this->property('paginator', 'total_pages');
     }
 
+    /**
+     * Get the current page number
+     * Should only be called on paginated endpoint responses
+     *
+     * @return string|int
+     * @throws \Exception when attempting to get the page number of a non paginated response
+     */
     private function getCurrentPage()
     {
         if(!$this->paginator) {
@@ -195,7 +308,10 @@ class ApiResponse implements \JsonSerializable
      * Basically the same as __get() except you can get sub properties
      * e.g.
      * $currentPage = $this->property('paginator', 'current_page')
+     *
+     * @param string ... any number of parameter names
      * @return mixed NULL: if the property could not be found
+     * @see __get()
      */
     private function property()
     {
@@ -203,7 +319,7 @@ class ApiResponse implements \JsonSerializable
         $response = $this->response();
         foreach($args as $value) {
 
-            if (array_key_exists($value, (array)$response)) { // Cannot use isset() here because if fails on NULL
+            if (array_key_exists($value, (array)$response)) { // Cannot use isset() here because it fails on NULL
                 $response = $response->{$value};
             } else {
 
@@ -217,6 +333,16 @@ class ApiResponse implements \JsonSerializable
         return $response;
     }
 
+    /**
+     * Like phps native trigger_error($string, E_USER_NOTICE) function except the file and line number will be from the closest
+     * debug_backtrace() value outside this object
+     *
+     * @param string $message
+     * @param array $debugBackTrace debug_backtrace()
+     * @param string $class
+     * @param string $functionName
+     * @param array $functionArgs func_get_args()
+     */
     private function triggerError($message, $debugBackTrace, $class, $functionName, $functionArgs)
     {
 
@@ -253,16 +379,34 @@ class ApiResponse implements \JsonSerializable
 
     }
 
+    /**
+     * Die and dump $this->serialise()
+     * Functions similarly to Laravels dd() function
+     * useful for debugging
+     * NOTE: WILL CALL die()
+     *
+     * @see serialise()
+     */
     public function dd() {
-        dj($this->serialise());
+        die("<pre>" . htmlspecialchars(json_encode($this->serialise(), JSON_PRETTY_PRINT)) . "</pre>");
     }
 
+    /**
+     * Magic method called by var_dump() on this object
+     *
+     * @return array
+     * @link http://php.net/manual/en/language.oop5.magic.php#object.debuginfo
+     */
     public function __debugInfo() {
         return $this->serialise();
     }
 
     /**
+     * Magic method used by json_encode($apiResponse)
+     * NOTE: the implements \JsonSerializable on this class
+     *
      * Specify data which should be serialized to JSON
+     *
      * @link http://php.net/manual/en/jsonserializable.jsonserialize.php
      * @return mixed data which can be serialized by <b>json_encode</b>,
      * which is a value of any type other than a resource.
