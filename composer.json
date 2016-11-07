@@ -1,11 +1,11 @@
 {
-    "name": "greghanton/uberaccounting-oauth-api",
-    "autoload": {
-        "psr-4": {
-            "UberAccountingApi\\": "src"
-        }
-    },
-    "require": {
-        "php-curl-class/php-curl-class": "*"
+  "name": "greghanton/uberaccounting-oauth-api",
+  "autoload": {
+    "psr-4": {
+      "UberAccountingApi\\": "src"
     }
+  },
+  "require": {
+    "php-curl-class/php-curl-class": "*"
+  }
 }

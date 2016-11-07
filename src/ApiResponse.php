@@ -53,8 +53,9 @@ class ApiResponse implements \JsonSerializable
      *
      * @return bool
      */
-    public function success() {
-        if($this->forceSuccess !== null) {
+    public function success()
+    {
+        if ($this->forceSuccess !== null) {
             return $this->forceSuccess;
         } else {
             return $this->curl->error ? false : true;
@@ -66,7 +67,8 @@ class ApiResponse implements \JsonSerializable
      *
      * @return mixed
      */
-    public function response() {
+    public function response()
+    {
         return $this->curl->response;
     }
 
@@ -74,16 +76,17 @@ class ApiResponse implements \JsonSerializable
      * Return an array of errors that occurred (may be blank if no errors occurred)
      * The end point may return an array of errors if it finds an error
      * Or if there was an http error then return that
-     * 
+     *
      * @return array of errors (may be blank) array elemnts are of the form:
      *      ['title'=>'string message (always present)', 'message'=>'detailed description (may not be set)']
      */
-    public function errors() {
+    public function errors()
+    {
         $errors = [];
-        if( array_key_exists('errors', (array)$this->response()) ) {
+        if (array_key_exists('errors', (array)$this->response())) {
             $errors = array_merge($errors, json_decode(json_encode($this->errors), true));      // Cast ->errors to array
         }
-        if(count($errors) === 0 && $this->curl->error) {
+        if (count($errors) === 0 && $this->curl->error) {
             $errors[] = [
                 'title' => $this->curl->errorCode . ': ' . $this->curl->errorMessage,
             ];
@@ -113,12 +116,12 @@ class ApiResponse implements \JsonSerializable
     {
         $errors = $this->errors();
         $response = [];
-        foreach($errors as $error) {
+        foreach ($errors as $error) {
             $response[] = $error['title'];
         }
 
         // If no error messages were found but the request was not a success then add a default error message.
-        if( count($response) === 0 && !$this->success() ) {
+        if (count($response) === 0 && !$this->success()) {
             $response[] = "Unknown error occurred.";
         }
 
@@ -131,7 +134,8 @@ class ApiResponse implements \JsonSerializable
      * @return Curl
      * @see curl
      */
-    public function getCurl() {
+    public function getCurl()
+    {
         return $this->curl;
     }
 
@@ -142,7 +146,8 @@ class ApiResponse implements \JsonSerializable
      * @return mixed
      * @see http://php.net/manual/en/function.curl-getinfo.php
      */
-    public function getCurlInfo($opt) {
+    public function getCurlInfo($opt)
+    {
         return $this->curl->getInfo($opt);
     }
 
@@ -152,7 +157,8 @@ class ApiResponse implements \JsonSerializable
      *
      * @return string
      */
-    public function getRequestUrl() {
+    public function getRequestUrl()
+    {
         return $this->getCurlInfo(CURLINFO_EFFECTIVE_URL);
     }
 
@@ -161,7 +167,8 @@ class ApiResponse implements \JsonSerializable
      *
      * @return integer
      */
-    public function getHttpCode() {
+    public function getHttpCode()
+    {
         return $this->getCurlInfo(CURLINFO_HTTP_CODE);
     }
 
@@ -170,7 +177,8 @@ class ApiResponse implements \JsonSerializable
      *
      * @return string
      */
-    public function getMethod() {
+    public function getMethod()
+    {
         return $this->requestOptions['method'];
     }
 
@@ -180,7 +188,8 @@ class ApiResponse implements \JsonSerializable
      *
      * @return array
      */
-    public function serialise() {
+    public function serialise()
+    {
         return [
             'url'            => $this->getRequestUrl(),
             'http-code'      => $this->getHttpCode(),
@@ -261,7 +270,7 @@ class ApiResponse implements \JsonSerializable
      */
     public function nextPage()
     {
-        if($this->hasNextPage()) {
+        if ($this->hasNextPage()) {
             // modify the request so it will get the next page
             $requestOptions = $this->requestOptions;
             $requestOptions['data']['page'] = $this->getCurrentPage() + 1;
@@ -298,7 +307,7 @@ class ApiResponse implements \JsonSerializable
      */
     private function getCurrentPage()
     {
-        if(!$this->paginator) {
+        if (!$this->paginator) {
             throw new \Exception("Attempted to get the page number for a non paginated response.");
         }
         return $this->paginator->current_page;
@@ -317,7 +326,7 @@ class ApiResponse implements \JsonSerializable
     {
         $args = func_get_args();
         $response = $this->response();
-        foreach($args as $value) {
+        foreach ($args as $value) {
 
             if (array_key_exists($value, (array)$response)) { // Cannot use isset() here because it fails on NULL
                 $response = $response->{$value};
@@ -347,10 +356,10 @@ class ApiResponse implements \JsonSerializable
     {
 
         $externalTraceId = 0;
-        while(true) {
-            if( isset($debugBackTrace[$externalTraceId + 1]['class']) ) {
-                if($debugBackTrace[$externalTraceId]['class'] === $class) {
-                    if(count($debugBackTrace) > $externalTraceId+1) {
+        while (true) {
+            if (isset($debugBackTrace[$externalTraceId + 1]['class'])) {
+                if ($debugBackTrace[$externalTraceId]['class'] === $class) {
+                    if (count($debugBackTrace) > $externalTraceId + 1) {
                         $externalTraceId++;
                         continue;
                     }
@@ -363,9 +372,9 @@ class ApiResponse implements \JsonSerializable
 
         $externalTraceId = $externalTraceId > 0 ? $externalTraceId - 1 : 0;
 
-        while($externalTraceId > 0 &&
+        while ($externalTraceId > 0 &&
             (!isset($debugBackTrace[$externalTraceId]['file']) &&
-            !isset($debugBackTrace[$externalTraceId]['line']))
+                !isset($debugBackTrace[$externalTraceId]['line']))
         ) {
             $externalTraceId--;
         }
@@ -387,7 +396,8 @@ class ApiResponse implements \JsonSerializable
      *
      * @see serialise()
      */
-    public function dd() {
+    public function dd()
+    {
         die("<pre>" . htmlspecialchars(json_encode($this->serialise(), JSON_PRETTY_PRINT)) . "</pre>");
     }
 
@@ -397,7 +407,8 @@ class ApiResponse implements \JsonSerializable
      * @return array
      * @link http://php.net/manual/en/language.oop5.magic.php#object.debuginfo
      */
-    public function __debugInfo() {
+    public function __debugInfo()
+    {
         return $this->serialise();
     }
 

@@ -9,7 +9,8 @@ namespace UberAccountingApi;
  *
  * @package UberAccountingApi
  */
-class AccessToken {
+class AccessToken
+{
 
     /**
      * @var array
@@ -35,7 +36,7 @@ class AccessToken {
         self::$config = $config;
 
         // First Attempt to get an access_token from the json file
-        if( $accessToken = self::getCachedAccessToken() ) {
+        if ($accessToken = self::getCachedAccessToken()) {
             return $accessToken;
         }
 
@@ -53,13 +54,13 @@ class AccessToken {
      */
     private static function getCachedAccessToken()
     {
-        if(file_exists(self::getAccessTokenFilePath())) {
+        if (file_exists(self::getAccessTokenFilePath())) {
 
             // the cache file exists
             $accessToken = require(self::getAccessTokenFilePath());
 
             // Ignore any access token that has expired or is about to expire
-            if(!empty($accessToken['access_token']) &&
+            if (!empty($accessToken['access_token']) &&
                 is_int($accessToken['expires_at']) &&
                 $accessToken['expires_at'] > time() - self::$config['access_token_expire_buffer']
             ) {
@@ -101,11 +102,11 @@ class AccessToken {
                 //'client_secret' => self::$config['client_secret'],
             ],
         ]);
-        if( $apiResponse->success() ) {
+        if ($apiResponse->success()) {
 
             $data = $apiResponse->response();
 
-            if(!isset($data->access_token)) {
+            if (!isset($data->access_token)) {
                 // ERROR access_token was not set in the response
                 $apiResponse->setSuccess(false);
                 return $apiResponse;
@@ -114,7 +115,7 @@ class AccessToken {
             // Set expires_at
             $data->expires_at = time() + $data->expires_in;
 
-            if($andCache) {
+            if ($andCache) {
 
                 self::cacheAccessToken($data);
 
@@ -137,11 +138,11 @@ class AccessToken {
      */
     private static function getAccessTokenFilePath()
     {
-        if( empty(self::$config['access_token_filename']) ) {
+        if (empty(self::$config['access_token_filename'])) {
             throw new \Exception("Access token filename missing");
         }
         $tmpDir = rtrim(sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR;
-        return  $tmpDir . self::$config['access_token_filename'];
+        return $tmpDir . self::$config['access_token_filename'];
     }
 
     /**
@@ -157,7 +158,7 @@ class AccessToken {
      */
     private static function cacheAccessToken($data)
     {
-        if( ! @file_put_contents(self::getAccessTokenFilePath(), '<?php return ' . var_export((array)$data, true) . ';') ) {
+        if (!@file_put_contents(self::getAccessTokenFilePath(), '<?php return ' . var_export((array)$data, true) . ';')) {
 
             error_log(
                 "Error writing to file.\n" .

@@ -52,7 +52,7 @@ class ApiRequest
          *
          * This MUST BE PASSED IN via $options in self::request()
          */
-        'data'            => [],
+        'data'              => [],
 
         /**
          * Any headers to pass add to the curl requestData to be send as payload or querystring along with the request
@@ -63,7 +63,7 @@ class ApiRequest
          *
          * This MUST BE PASSED IN via $options in self::request()
          */
-        'headers'            => [],
+        'headers'           => [],
 
         /**
          * Automatically add access token to the request
@@ -102,14 +102,14 @@ class ApiRequest
             $accessToken = self::getAccessToken();
             if (is_string($accessToken)) {
 //                $options['data']['access_token'] = $accessToken;
-                $options['headers']['Authorization'] = 'Bearer '.$accessToken;
+                $options['headers']['Authorization'] = 'Bearer ' . $accessToken;
             } else {
                 // An error occurred while getting access token so return the ApiResponse from getAccessToken
                 return $accessToken;
             }
         }
 
-        if( !isset($options['url']) && !isset($options['url-absolute']) ) {
+        if (!isset($options['url']) && !isset($options['url-absolute'])) {
             throw new \Exception("ERROR: Url not specified for curl request.");
         }
 
@@ -121,14 +121,14 @@ class ApiRequest
         $curl->setOpt(CURLOPT_SSL_VERIFYHOST, false);
         //$curl->setOpt(CURLOPT_FOLLOWLOCATION, true);
 
-        if( isset($options['url-absolute']) ) {
+        if (isset($options['url-absolute'])) {
             $url = $config['url-base'] . $options['url-absolute'];
         } else {
             $url = $config['url-base'] . $config['url-version'] . $options['url'];
         }
 
-        if(isset($options['headers'])) {
-            foreach($options['headers'] as $key => $value) {
+        if (isset($options['headers'])) {
+            foreach ($options['headers'] as $key => $value) {
                 $curl->setHeader($key, $value);
             }
         }
@@ -185,10 +185,10 @@ class ApiRequest
      */
     private static function getConfig($overrideConfig = [])
     {
-        if(!self::$config) {
+        if (!self::$config) {
             self::$config = require(self::CONFIG_FILE);
         }
-        if($overrideConfig) {
+        if ($overrideConfig) {
             self::$config = array_merge(self::$config, $overrideConfig);
         }
         return self::$config;
