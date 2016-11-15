@@ -29,7 +29,7 @@ return [
     /*
      * URL base
      */
-    'url-base'                   => env('UBER_URL_BASE', 'https://api.uberaccounting.co.uk/'),
+    'url-base'                   => env('UBER_URL_BASE', 'https://api.simplifi.com/'),
 
 
     /*

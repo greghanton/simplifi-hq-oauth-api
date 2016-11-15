@@ -1,12 +1,12 @@
 <?php
 
-namespace UberAccountingApi;
+namespace SimplifiApi;
 
 use Curl\Curl;
 
 /**
  * Class ApiResponse
- * @package UberAccountingApi
+ * @package SimplifiApi
  */
 class ApiResponse implements \JsonSerializable
 {

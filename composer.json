@@ -1,8 +1,8 @@
 {
-  "name": "greghanton/uberaccounting-oauth-api",
+  "name": "greghanton/simplifi-hq-oauth-api",
   "autoload": {
     "psr-4": {
-      "UberAccountingApi\\": "src"
+      "SimplifiApi\\": "src"
     }
   },
   "require": {

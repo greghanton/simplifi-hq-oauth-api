@@ -1,12 +1,12 @@
 <?php
 
-namespace UberAccountingApi;
+namespace SimplifiApi;
 
 use Curl\Curl;
 
 /**
  * Class ApiRequest
- * @package UberAccountingApi
+ * @package SimplifiApi
  */
 class ApiRequest
 {

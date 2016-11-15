@@ -1,13 +1,13 @@
 <?php
 
-namespace UberAccountingApi;
+namespace SimplifiApi;
 
 /**
  * Class AccessToken
  *
  * Access token will be cached in '%temp%/ua-access-token.php' file
  *
- * @package UberAccountingApi
+ * @package SimplifiApi
  */
 class AccessToken
 {
