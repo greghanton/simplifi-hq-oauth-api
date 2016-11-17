@@ -177,4 +177,15 @@ class AccessToken
         }
     }
 
+    /**
+     * Remove the cached oauth token in %temp%
+     */
+    public static function clearCache()
+    {
+        $cacheFile = self::getAccessTokenFilePath();
+        if(is_file($cacheFile)) {
+            unlink($cacheFile);
+        }
+    }
+
 }
