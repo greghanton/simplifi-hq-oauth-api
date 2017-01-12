@@ -8,7 +8,7 @@ use Curl\Curl;
  * Class ApiResponse
  * @package SimplifiApi
  */
-class ApiResponse implements \JsonSerializable
+class ApiResponse implements \JsonSerializable, \Iterator
 {
 
     /**
@@ -242,7 +242,7 @@ class ApiResponse implements \JsonSerializable
      * e.g. $response->data->id
      * e.g. $response->paginator->total_count
      *
-     * @return ApiResponse|string
+     * @return mixed
      * @see property()
      */
     public function __get($name)
@@ -427,5 +427,91 @@ class ApiResponse implements \JsonSerializable
     {
         return $this->serialise();
     }
+
+    /**************** START Iterator methods ****************/
+
+    /**
+     * Is the api response iteratable?
+     * @return bool
+     */
+    private function dataIsIteratable()
+    {
+        return is_array($this->response()->data);
+    }
+
+    /**
+     * Throw an exception if response data is not an array
+     * @throws \Exception
+     */
+    private function iteratableCheck()
+    {
+        if( !$this->dataIsIteratable() ) {
+            throw new \Exception("Invalid argument api response is not iteratable.");
+        }
+    }
+
+    /**
+     * Rewind the Iterator to the first element
+     * @link http://php.net/manual/en/iterator.rewind.php
+     * @return void Any returned value is ignored.
+     * @since 5.0.0
+     */
+    public function rewind()
+    {
+        $this->iteratableCheck();
+        reset($this->response()->data);
+    }
+
+    /**
+     * Return the current element
+     * @link http://php.net/manual/en/iterator.current.php
+     * @return mixed Can return any type.
+     * @since 5.0.0
+     */
+    public function current()
+    {
+        $this->iteratableCheck();
+        return current($this->response()->data);
+    }
+
+    /**
+     * Return the key of the current element
+     * @link http://php.net/manual/en/iterator.key.php
+     * @return mixed scalar on success, or null on failure.
+     * @since 5.0.0
+     */
+    public function key()
+    {
+        $this->iteratableCheck();
+        return key($this->response()->data);
+    }
+
+    /**
+     * Move forward to next element
+     * @link http://php.net/manual/en/iterator.next.php
+     * @return void Any returned value is ignored.
+     * @since 5.0.0
+     */
+    public function next()
+    {
+        $this->iteratableCheck();
+        return next($this->response()->data);
+    }
+
+    /**
+     * Checks if current position is valid
+     * @link http://php.net/manual/en/iterator.valid.php
+     * @return boolean The return value will be casted to boolean and then evaluated.
+     * Returns true on success or false on failure.
+     * @since 5.0.0
+     */
+    public function valid()
+    {
+        $this->iteratableCheck();
+        $key = key($this->response()->data);
+        return ($key !== NULL && $key !== FALSE);
+    }
+
+    /**************** END Iterator methods ****************/
 
 }
