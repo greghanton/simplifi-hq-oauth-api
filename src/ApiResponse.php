@@ -299,6 +299,70 @@ class ApiResponse implements \JsonSerializable, \Iterator
     }
 
     /**
+     * This will do as many requests as required to fetch every page's items into a single array and return that array
+     *
+     * e.g. of usage:
+     *
+     * function fetchAllPageDataWithErrorChecking() {
+     *     
+     *     if ($this->success()) {
+     *         $return = $this->fetchAllPageData();
+     *         if (FALSE !== $return) {
+     *             return $return;
+     *         } else {
+     *             throw new \Exception("Unknown error while fetching all pages of paginated api response.");
+     *         }
+     *     } else {
+     *         throw new \Exception("Unknown error on paginated response. " . $response->errorsToString());
+     *     }
+     *     
+     * }
+     *
+     * @return array
+     */
+    protected function fetchAllPageData()
+    {
+
+        $tempResponse = $this;
+        $allItems = [];
+
+        do {
+
+            foreach( $tempResponse as $value ) {
+                $allItems[] = $value;
+            }
+
+        } while( $tempResponse = $tempResponse->nextPage() );
+
+        return $allItems;
+
+    }
+
+    /**
+     * This will do as many requests as required to fetch every page's items into a single array and return that array
+     * This function is the same as $this->fetchAllPageData() with a little additional error checking
+     *
+     * @return mixed
+     * @see fetchAllPageData
+     * @throws \Exception
+     */
+    public function fetchAllPageDataWithErrorChecking()
+    {
+        
+        if ($this->success()) {
+            $return = $this->fetchAllPageData();
+            if (FALSE !== $return) {
+                return $return;
+            } else {
+                throw new \Exception("Unknown error while fetching all pages of paginated api response.");
+            }
+        } else {
+            throw new \Exception("Unknown error on paginated response. " . $response->errorsToString());
+        }
+
+    }
+
+    /**
      * Get the current page number
      * Should only be called on paginated endpoint responses
      *
