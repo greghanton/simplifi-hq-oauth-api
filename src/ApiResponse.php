@@ -342,7 +342,7 @@ class ApiResponse implements \JsonSerializable, \Iterator
      * This will do as many requests as required to fetch every page's items into a single array and return that array
      * This function is the same as $this->fetchAllPageData() with a little additional error checking
      *
-     * @return mixed
+     * @return array
      * @see fetchAllPageData
      * @throws \Exception
      */
