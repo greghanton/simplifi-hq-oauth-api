@@ -8,7 +8,7 @@ use Curl\Curl;
  * Class ApiResponse
  * @package SimplifiApi
  */
-class ApiResponse implements \JsonSerializable, \Iterator
+class ApiResponse implements \JsonSerializable, \Iterator, \Countable
 {
 
     /**
@@ -490,6 +490,20 @@ class ApiResponse implements \JsonSerializable, \Iterator
     function jsonSerialize()
     {
         return $this->serialise();
+    }
+	
+	/**
+	 * Classes implementing Countable can be used with the count() function.
+	 * @return integer
+	 */
+    public function count()
+    {
+		if( is_array($this->response()->data) ) {
+			return count($this->response()->data);
+		} else {
+			throw new Exception("Error: Attempting to count a non countable object.");
+			return 0;
+		}
     }
 
     /**************** START Iterator methods ****************/
