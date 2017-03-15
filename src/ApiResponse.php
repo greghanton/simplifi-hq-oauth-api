@@ -303,7 +303,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      *
      * e.g. of usage:
      *
-     * function fetchAllPageDataWithErrorChecking() {
+     * function allPages() {
      *     
      *     if ($this->success()) {
      *         $return = $this->fetchAllPageData();
@@ -346,7 +346,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @see fetchAllPageData
      * @throws \Exception
      */
-    public function fetchAllPageDataWithErrorChecking()
+    public function allPages()
     {
         
         if ($this->success()) {
