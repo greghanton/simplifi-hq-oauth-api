@@ -190,11 +190,12 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     public function serialise()
     {
+        $response = $this->response();
         return [
             'url'            => $this->getRequestUrl(),
             'http-code'      => $this->getHttpCode(),
             'method'         => $this->getMethod(),
-            'response'       => $this->response(),
+            'response'       => $this->isJson($response) ? json_decode($response) : $response,
             'requestOptions' => $this->getRequestOptions(),
         ];
     }
@@ -463,6 +464,19 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     public function dd()
     {
         die("<pre>" . htmlspecialchars(json_encode($this->serialise(), JSON_PRETTY_PRINT)) . "</pre>");
+    }
+
+    /**
+     * Check if string is valid json
+     */
+    private function isJson($string)
+    {
+        if(!is_string($string)) {
+            return false;
+        }
+
+        json_decode($string);
+        return (json_last_error() == JSON_ERROR_NONE);
     }
 
     /**
