@@ -129,6 +129,22 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     }
 
     /**
+     * Throw Exception
+     *
+     * @param $message string Message to throw
+     * @throws \Exception
+     */
+    public function throw($message)
+    {
+        if(env('APP_ENV') === 'local') {
+            $this->dd();
+        } else {
+            $message = $message ? $message . "\n" : '';
+            throw new \Exception($message . $response->errorsToString());
+        }
+    }
+
+    /**
      * Return the Curl object
      *
      * @return Curl
@@ -195,8 +211,8 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
             'url'            => $this->getRequestUrl(),
             'http-code'      => $this->getHttpCode(),
             'method'         => $this->getMethod(),
-            'response'       => $this->isJson($response) ? json_decode($response) : $response,
             'requestOptions' => $this->getRequestOptions(),
+            'response'       => $this->isJson($response) ? json_decode($response) : $response,
         ];
     }
 
