@@ -139,8 +139,9 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
         if(env('APP_ENV') === 'local') {
             $this->dd();
         } else {
+            error_log($message . "\n" . json_encode($this->serialise()));
             $message = $message ? $message . "\n" : '';
-            throw new \Exception($message . $response->errorsToString());
+            throw new \Exception($message . $this->errorsToString());
         }
     }
 
@@ -374,7 +375,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
                 throw new \Exception("Unknown error while fetching all pages of paginated api response.");
             }
         } else {
-            throw new \Exception("Unknown error on paginated response. " . $response->errorsToString());
+            throw new \Exception("Unknown error on paginated response. " . $this->errorsToString());
         }
 
     }
