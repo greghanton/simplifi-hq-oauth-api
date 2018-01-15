@@ -5,31 +5,31 @@ return [
     /*
      * Client id for Uber Accounting API OAuth
      */
-    'client_id'                  => config('env-file.UBER_API_CLIENT_ID'),
+    'client_id'                  => env('UBER_API_CLIENT_ID'),
 
 
     /*
      * Client secret for Uber Accounting API OAuth
      */
-    'client_secret'              => config('env-file.UBER_API_CLIENT_SECRET'),
+    'client_secret'              => env('UBER_API_CLIENT_SECRET'),
 
 
     /*
      * Username for Uber Accounting API OAuth
      */
-    'username'                   => config('env-file.UBER_API_USERNAME'),
+    'username'                   => env('UBER_API_USERNAME'),
 
 
     /*
      * Password for Uber Accounting API OAuth
      */
-    'password'                   => config('env-file.UBER_API_PASSWORD'),
+    'password'                   => env('UBER_API_PASSWORD'),
 
 
     /*
      * URL base
      */
-    'url-base'                   => config('env-file.UBER_URL_BASE', 'https://api.simplifi.com/'),
+    'url-base'                   => env('UBER_URL_BASE', 'https://api.simplifi.com/'),
 
 
     /*
