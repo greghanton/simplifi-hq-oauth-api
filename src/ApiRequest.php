@@ -139,23 +139,25 @@ class ApiRequest
             }
         }
 
+        $return = null;
+
         switch (strtoupper($thisOptions['method'])) {
             case('GET'):
 
                 $curl->get($url, $thisOptions['data']);
-                return self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
 
                 break;
             case('POST'):
 
                 $curl->post($url, $thisOptions['data']);
-                return self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
 
                 break;
             case('PUT'):
 
                 $curl->put($url, $thisOptions['data']);
-                return self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
 
                 break;
             case('OPTIONS'):
@@ -164,7 +166,7 @@ class ApiRequest
             case('DELETE'):
 
                 $curl->delete($url, null, $thisOptions['data']);
-                return self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
 
                 break;
             case('HEAD'):
@@ -173,12 +175,17 @@ class ApiRequest
             case('PATCH'):
 
                 $curl->patch($url, $thisOptions['data']);
-                return self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
 
                 break;
         }
 
-        throw new \Exception("Invalid method");
+        if($return === null) {
+            throw new \Exception("Invalid method");
+        }
+
+        return $return;
+
     }
 
     /**
