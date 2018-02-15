@@ -140,7 +140,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @param $message string Message to throw
      * @throws \Exception
      */
-    public function throw($message)
+    public function throwException($message)
     {
         if(env('APP_ENV') === 'local') {
             $this->dd();
@@ -148,6 +148,25 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
             error_log($message . "\n" . json_encode($this->serialise()));
             $message = $message ? $message . "\n" : '';
             throw new \Exception($message . $this->errorsToString());
+        }
+    }
+
+    /**
+     * Map ->throw() to ->throwException() for backwards compatibility
+     *
+     * @param $method
+     * @param $args
+     * @throws \Exception
+     */
+    function __call($method, $args) {
+        if ($method == 'throw') {
+            call_user_func_array([$this, 'throwException'], $args);
+        } else {
+            $debugTrace = debug_backtrace();
+            $debugTrace = count($debugTrace) > 0 ? $debugTrace[0] : null;
+
+            throw new \Exception("Call to undefined method " . __CLASS__ . "::" . $method .
+                "() in " . ($debugTrace ? $debugTrace['file'] : '') . ":" . ($debugTrace ? $debugTrace['line'] : '') . "\n");
         }
     }
 
