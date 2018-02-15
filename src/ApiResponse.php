@@ -499,7 +499,8 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     public function dd()
     {
-        die("<pre>" . htmlspecialchars(json_encode($this->serialise(), JSON_PRETTY_PRINT)) . "</pre>");
+        header("Content-type: application/json");
+        die(json_encode($this->serialise(), JSON_PRETTY_PRINT));
     }
 
     /**
