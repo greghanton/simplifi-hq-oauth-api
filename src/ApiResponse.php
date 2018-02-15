@@ -288,22 +288,13 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * e.g. $response->data->id
      * e.g. $response->paginator->total_count
      *
+     * @param string $name
      * @return mixed
      * @see property()
      */
     public function __get($name)
     {
         return $this->property($name);
-
-////        echo "Getting '$name'\n";
-//        $response = $this->response();
-//        if (array_key_exists('invoice-number', (array)$response)) { // Cannot use isset() here because if fails on NULL
-//            return $response->{$name};
-//        }
-//
-//        $this->triggerError("Undefined property via __get()", debug_backtrace(), __CLASS__, __FUNCTION__, func_get_args());
-//
-//        return null;
     }
 
     /**
@@ -311,6 +302,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * e.g. isset($response->data) would always return false without this function
      * e.g. with this function isset($response->data) returns true if it is set
      *
+     * @param $prop
      * @return mixed
      * @see __get()
      */
@@ -528,6 +520,9 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
 
     /**
      * Check if string is valid json
+     *
+     * @param string $string string that we want to check if it is json format or not
+     * @return bool true if the $string passed in is json
      */
     private function isJson($string)
     {
@@ -565,18 +560,19 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     {
         return $this->serialise();
     }
-	
-	/**
-	 * Classes implementing Countable can be used with the count() function.
-	 * @return integer
-	 */
+
+    /**
+     * Classes implementing Countable can be used with the count() function.
+     *
+     * @return int
+     * @throws \Exception
+     */
     public function count()
     {
 		if( is_array($this->response()->data) ) {
 			return count($this->response()->data);
 		} else {
-			throw new Exception("Error: Attempting to count a non countable object.");
-			return 0;
+			throw new \Exception("Error: Attempting to count a non countable object.");
 		}
     }
 
@@ -641,7 +637,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     /**
      * Move forward to next element
      * @link http://php.net/manual/en/iterator.next.php
-     * @return void Any returned value is ignored.
+     * @ return void Any returned value is ignored.
      * @since 5.0.0
      */
     public function next()
