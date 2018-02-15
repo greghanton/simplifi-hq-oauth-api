@@ -87,8 +87,9 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
             $errors = array_merge($errors, json_decode(json_encode($this->errors), true));      // Cast ->errors to array
         }
         if (array_key_exists('error', (array)$this->response())) {
+            $temp = ((array)$this->response());
             $errors[] = [
-                'title' => ((array)$this->response())['error'],
+                'title' => $temp['error'],
             ];
         }
         if (count($errors) === 0 && $this->curl->error) {
