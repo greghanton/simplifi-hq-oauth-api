@@ -284,6 +284,20 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     }
 
     /**
+     * Magic method to check the isset() of a property
+     * e.g. isset($response->data) would always return false without this function
+     * e.g. with this function isset($response->data) returns true if it is set
+     *
+     * @return mixed
+     * @see __get()
+     */
+    public function __isset($prop)
+    {
+        $val = $this->$prop;
+        return isset($val);
+    }
+
+    /**
      * Return an ApiResponse for the next page of this request.
      * This should only be used for paginated results.
      * Returns FALSE if request is not paginated or there are no more pages
