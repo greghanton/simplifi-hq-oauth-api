@@ -139,23 +139,26 @@ class ApiRequest
             }
         }
 
+        $return = null;
+        $time = microtime(true);
+
         switch (strtoupper($thisOptions['method'])) {
             case('GET'):
 
                 $curl->get($url, $thisOptions['data']);
-                return self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
 
                 break;
             case('POST'):
 
                 $curl->post($url, $thisOptions['data']);
-                return self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
 
                 break;
             case('PUT'):
 
                 $curl->put($url, $thisOptions['data']);
-                return self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
 
                 break;
             case('OPTIONS'):
@@ -164,7 +167,7 @@ class ApiRequest
             case('DELETE'):
 
                 $curl->delete($url, null, $thisOptions['data']);
-                return self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
 
                 break;
             case('HEAD'):
@@ -173,12 +176,165 @@ class ApiRequest
             case('PATCH'):
 
                 $curl->patch($url, $thisOptions['data']);
-                return self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
 
                 break;
+
+            default:
+                throw new \Exception("Invalid method");
+                break;
+        }
+//        dj(\App\Classes\Utils::curl("http://api-local.simplifi-hq.com/api/v1/test"));
+//dd(file_get_contents("https://api-local.simplifi-hq.com/api/v1/test"));
+        if($config['debug']) {
+            $json = @json_decode(@file_get_contents($config['debug'])) ? : [];
+            $json[] = [
+                'data' => $return->serialise(),
+                'time' => microtime(true) - $time,
+            ];
+            file_put_contents(
+                $config['debug'],
+                json_encode(array_slice($json, -50), JSON_PRETTY_PRINT)
+                //,FILE_APPEND
+            );
         }
 
-        throw new \Exception("Invalid method");
+        return $return;
+
+    }
+
+    /**
+     * Do a request
+     *
+     * @param array $options check $defaultRequestOptions for a list of available options
+     * @param array $overrideConfig This will override options in the config.php file if you want
+     *      This will almost never by passed in
+     * @return Promise\PromiseInterface result from the request i.e. check ApiResponse::success() to see if it was successful
+     * @throws \Exception if url not specified
+     * @see $defaultRequestOptions
+     * @see ApiResponse::success()
+     */
+    public static function requestAsync($options, $overrideConfig = [])
+    {
+        $config = self::getConfig($overrideConfig);
+
+        $thisOptions = array_merge(self::$defaultRequestOptions, $options);
+
+        if ($thisOptions['with-access-token'] && !isset($thisOptions['data']['access_token'])) {
+            $accessToken = self::getAccessToken();
+            if (is_string($accessToken)) {
+//                $options['data']['access_token'] = $accessToken;
+                $thisOptions['headers']['Authorization'] = 'Bearer ' . $accessToken;
+            } else {
+                // An error occurred while getting access token so return the ApiResponse from getAccessToken
+                return $accessToken;
+            }
+        }
+
+        if (!isset($thisOptions['url']) && !isset($thisOptions['url-absolute'])) {
+            throw new \Exception("ERROR: Url not specified for curl request.");
+        }
+
+        if (isset($thisOptions['url-absolute'])) {
+            $url = $config['url-base'] . $thisOptions['url-absolute'];
+        } else {
+            $url = $config['url-base'] . $config['url-version'] . ltrim($thisOptions['url'], '/\\');
+        }
+
+        $client = new \GuzzleHttp\Client(['verify' => false]);
+
+        $res = $client->requestAsync(
+            $thisOptions['method'],
+            $url,
+            [
+                'headers' => isset($thisOptions['headers']) ? $thisOptions['headers'] : [],
+                'query' => isset($thisOptions['query']) ? $thisOptions['query'] : [],
+            ]
+        );
+        return $res;
+//        echo $res->getStatusCode();
+//        // "200"
+//        echo $res->getHeader('content-type');
+//        // 'application/json; charset=utf8'
+//        echo $res->getBody();
+//        // {"type":"User"...'
+
+
+        $curl = new Curl();
+
+        // TODO remove these (they are only here for testing)
+        $curl->setOpt(CURLOPT_SSL_VERIFYPEER, false);
+        $curl->setOpt(CURLOPT_SSL_VERIFYHOST, false);
+        //$curl->setOpt(CURLOPT_FOLLOWLOCATION, true);
+
+        if (isset($thisOptions['headers'])) {
+            foreach ($thisOptions['headers'] as $key => $value) {
+                $curl->setHeader($key, $value);
+            }
+        }
+
+        $return = null;
+        $time = microtime(true);
+
+        switch (strtoupper($thisOptions['method'])) {
+            case('GET'):
+
+                $curl->get($url, $thisOptions['data']);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+
+                break;
+            case('POST'):
+
+                $curl->post($url, $thisOptions['data']);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+
+                break;
+            case('PUT'):
+
+                $curl->put($url, $thisOptions['data']);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+
+                break;
+            case('OPTIONS'):
+
+                break;
+            case('DELETE'):
+
+                $curl->delete($url, null, $thisOptions['data']);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+
+                break;
+            case('HEAD'):
+
+                break;
+            case('PATCH'):
+
+                $curl->patch($url, $thisOptions['data']);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+
+                break;
+
+            default:
+                throw new \Exception("Invalid method");
+                break;
+        }
+//        dj(\App\Classes\Utils::curl("http://api-local.simplifi-hq.com/api/v1/test"));
+//dd(file_get_contents("https://api-local.simplifi-hq.com/api/v1/test"));
+        if($config['debug']) {
+            $json = @json_decode(@file_get_contents($config['debug'])) ? : [];
+            $json[] = [
+                'data' => $return->serialise(),
+                'time' => microtime(true) - $time,
+            ];
+            file_put_contents(
+                $config['debug'],
+                json_encode(array_slice($json, -50), JSON_PRETTY_PRINT)
+                //,FILE_APPEND
+            );
+        }
+
+        return $return;
+
     }
 
     /**

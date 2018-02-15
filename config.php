@@ -53,4 +53,11 @@ return [
     'access_token_expire_buffer' => 10,
 
 
+    /*
+     * Boolean
+     * Print every response to a file (useful for debugging)
+     */
+    'debug' => env('UBER_API_DEBUG_LOCATION'),
+
+
 ];
