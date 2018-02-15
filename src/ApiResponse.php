@@ -6,6 +6,9 @@ use Curl\Curl;
 
 /**
  * Class ApiResponse
+ *
+ * @method throw(string $message) alias of throwException() {@see ApiResponse::throwException}
+ *
  * @package SimplifiApi
  */
 class ApiResponse implements \JsonSerializable, \Iterator, \Countable
