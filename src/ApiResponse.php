@@ -308,8 +308,11 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     public function __isset($prop)
     {
-        $val = $this->$prop;
-        return isset($val);
+        if (array_key_exists($prop, (array)$this->response())) { // Cannot use isset() here because it fails on NULL
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
