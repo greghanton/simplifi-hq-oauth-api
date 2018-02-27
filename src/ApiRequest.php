@@ -122,6 +122,8 @@ class ApiRequest
 
         $curl = new Curl();
 
+        $curl->setTimeout(0);
+
         // TODO remove these (they are only here for testing)
         $curl->setOpt(CURLOPT_SSL_VERIFYPEER, false);
         $curl->setOpt(CURLOPT_SSL_VERIFYHOST, false);
