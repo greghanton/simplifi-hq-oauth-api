@@ -17,6 +17,12 @@ class ApiRequest
     const CONFIG_FILE = __DIR__ . '/../config.php';
 
     /**
+     * An array of events added by self::addEventListener()
+     * @var array
+     */
+    private static $events = [];
+
+    /**
      * This will hold the contents of CONFIG_FILE in an array for quick access
      * @var null
      */
@@ -117,6 +123,12 @@ class ApiRequest
 
         if (!isset($thisOptions['url']) && !isset($thisOptions['url-absolute'])) {
             throw new \Exception("ERROR: Url not specified for curl request.");
+        }
+
+        if(isset(self::$events['beforeRequest'])) {
+            foreach(self::$events['beforeRequest'] as $event) {
+                $event($thisOptions, $config);
+            }
         }
 
 
@@ -252,6 +264,17 @@ class ApiRequest
     public static function getAccessToken()
     {
         return AccessToken::getAccessToken(self::getConfig());
+    }
+
+    /**
+     * Add an event listener
+     * 
+     * @param $event string e.g. "beforeRequest"
+     * @param $closure \Closure function to be called
+     */
+    public static function addEventListener($event, $closure)
+    {
+        self::$events[$event][] = $closure;
     }
 
 }
