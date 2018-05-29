@@ -518,7 +518,14 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     public function dd()
     {
         header("Content-type: application/json");
-        die(json_encode($this->serialise(), JSON_PRETTY_PRINT));
+        $serialised = $this->serialise();
+        $backtrace = debug_backtrace();
+
+        if(count($backtrace) > 0) {
+            $serialised['caller'] = $backtrace[0]['file'] . '::' . $backtrace[0]['line'];
+        }
+
+        die(json_encode($serialised, JSON_PRETTY_PRINT));
     }
 
     /**
