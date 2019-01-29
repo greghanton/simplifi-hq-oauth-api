@@ -1,35 +1,38 @@
 <?php
 return [
 
+    /**
+     * NOTE: UBER_... values are only added here for backwards compatibility and will be removed in a future release.
+     */
 
     /*
      * Client id for Uber Accounting API OAuth
      */
-    'client_id'                  => env('UBER_API_CLIENT_ID'),
+    'client_id'                  => env('SIMPLIFI_API_CLIENT_ID') ? : env('UBER_API_CLIENT_ID'),
 
 
     /*
      * Client secret for Uber Accounting API OAuth
      */
-    'client_secret'              => env('UBER_API_CLIENT_SECRET'),
+    'client_secret'              => env('SIMPLIFI_API_CLIENT_SECRET') ? : env('UBER_API_CLIENT_SECRET'),
 
 
     /*
      * Username for Uber Accounting API OAuth
      */
-    'username'                   => env('UBER_API_USERNAME'),
+    'username'                   => env('SIMPLIFI_API_USERNAME') ? : env('UBER_API_USERNAME'),
 
 
     /*
      * Password for Uber Accounting API OAuth
      */
-    'password'                   => env('UBER_API_PASSWORD'),
+    'password'                   => env('SIMPLIFI_API_PASSWORD') ? : env('UBER_API_PASSWORD'),
 
 
     /*
      * URL base
      */
-    'url-base'                   => env('UBER_URL_BASE', 'https://api.simplifi.com/'),
+    'url-base'                   => env('SIMPLIFI_URL_BASE') ? : env('UBER_URL_BASE', 'https://api.simplifi.com/'),
 
 
     /*
