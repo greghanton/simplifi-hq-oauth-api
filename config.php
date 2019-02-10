@@ -30,6 +30,12 @@ return [
 
 
     /*
+     * Scope to request
+     */
+    'scope'                      => env('SIMPLIFI_API_SCOPE', '*'),
+
+
+    /*
      * URL base
      */
     'url-base'                   => env('SIMPLIFI_URL_BASE') ? : env('UBER_URL_BASE', 'https://api.simplifi.com/'),

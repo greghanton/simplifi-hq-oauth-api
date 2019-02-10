@@ -95,7 +95,7 @@ class AccessToken
                 'client_secret' => self::$config['client_secret'],
                 'username'      => self::$config['username'],
                 'password'      => self::$config['password'],
-                'scope'         => '*',
+                'scope'         => self::$config['scope'],
 
                 //'grant_type'    => 'client_credentials',
                 //'client_id'     => self::$config['client_id'],
