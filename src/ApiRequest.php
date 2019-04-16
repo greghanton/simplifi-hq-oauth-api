@@ -99,12 +99,13 @@ class ApiRequest
      * @param array $options check $defaultRequestOptions for a list of available options
      * @param array $overrideConfig This will override options in the config.php file if you want
      *      This will almost never by passed in
+     * @param float leave this blank it is an internal variable
      * @return ApiResponse result from the request i.e. check ApiResponse::success() to see if it was successful
      * @throws \Exception if url not specified
      * @see $defaultRequestOptions
      * @see ApiResponse::success()
      */
-    public static function request($options, $overrideConfig = [])
+    public static function request($options, $overrideConfig = [], $timerStart = null)
     {
         $config = self::getConfig($overrideConfig);
 
@@ -125,8 +126,8 @@ class ApiRequest
             throw new \Exception("ERROR: Url not specified for curl request.");
         }
 
-        if(isset(self::$events['beforeRequest'])) {
-            foreach(self::$events['beforeRequest'] as $event) {
+        if (isset(self::$events['beforeRequest'])) {
+            foreach (self::$events['beforeRequest'] as $event) {
                 $event($thisOptions, $config);
             }
         }
@@ -154,24 +155,27 @@ class ApiRequest
         }
 
         $return = null;
+        if (!$timerStart) {
+            $timerStart = microtime(true);
+        }
 
         switch (strtoupper($thisOptions['method'])) {
             case('GET'):
 
                 $curl->get($url, $thisOptions['data']);
-                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig, $timerStart);
 
                 break;
             case('POST'):
 
                 $curl->post($url, $thisOptions['data']);
-                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig, $timerStart);
 
                 break;
             case('PUT'):
 
                 $curl->put($url, $thisOptions['data']);
-                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig, $timerStart);
 
                 break;
             case('OPTIONS'):
@@ -180,7 +184,7 @@ class ApiRequest
             case('DELETE'):
 
                 $curl->delete($url, null, $thisOptions['data']);
-                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig, $timerStart);
 
                 break;
             case('HEAD'):
@@ -189,12 +193,12 @@ class ApiRequest
             case('PATCH'):
 
                 $curl->patch($url, $thisOptions['data']);
-                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig);
+                $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig, $timerStart);
 
                 break;
         }
 
-        if($return === null) {
+        if ($return === null) {
             throw new \Exception("Invalid method");
         }
 
@@ -212,17 +216,20 @@ class ApiRequest
      * @param $thisOptions
      * @param $options
      * @param $overrideConfig
+     * @param $timerStart float start time of the request
      * @return ApiResponse
+     * @throws \Exception
      */
-    private static function createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig)
+    private static function createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig, $timerStart)
     {
-        if( $thisOptions['retry-on-authentication-exception'] && self::responseIsAuthenticationException($curl) ) {
+        if ($thisOptions['retry-on-authentication-exception'] && self::responseIsAuthenticationException($curl)) {
             AccessToken::clearCache();
             $options['retry-on-authentication-exception'] = false;      // Prevent infinate recursion
-            return self::request($options, $overrideConfig);
+            return self::request($options, $overrideConfig, $timerStart);
         }
+        $options['retry-on-authentication-exception'] = true;      // Reset this variable
 
-        return new ApiResponse($config, $curl, $thisOptions);
+        return new ApiResponse($config, $curl, $thisOptions, $timerStart);
     }
 
     /**
@@ -268,7 +275,7 @@ class ApiRequest
 
     /**
      * Add an event listener
-     * 
+     *
      * @param $event string e.g. "beforeRequest"
      * @param $closure \Closure function to be called
      */

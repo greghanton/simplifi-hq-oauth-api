@@ -7,7 +7,8 @@ use Curl\Curl;
 /**
  * Class ApiResponse
  *
- * @method throw(string $message) alias of throwException() {@see ApiResponse::throwException}
+ * @method throw(string $message) alias of throwException()
+ * @see ApiResponse::throwException
  *
  * @package SimplifiApi
  */
@@ -18,32 +19,42 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @var Curl
      */
     private $curl;
+
     /**
      * @var array
      */
     private $config;
+
     /**
      * @var boolean
      */
     private $forceSuccess = null;
+
     /**
      * @var array
      */
     private $requestOptions;
 
     /**
+     * @var float
+     */
+    private $requestTime;
+
+    /**
      * ApiResponse constructor.
      *
      * @param array $config This is the config array from the ../config.php file (sometimes some values will be
      *      overridden by the user but usually it is exactly the array from the file)
-     * @param Curl $curl instance of the php-curl-class/php-curl-class librarys Curl class
+     * @param $curl Curl instance of the php-curl-class/php-curl-class librarys Curl class
      * @param array $requestOptions this contains the request method, url etc @see ApiRequest::$defaultRequestOptions
+     * @param $timerStart float the time that the curl request was initiated
      */
-    public function __construct($config, Curl $curl, $requestOptions)
+    public function __construct($config, Curl $curl, $requestOptions, $timerStart)
     {
         $this->curl = $curl;
         $this->config = $config;
         $this->requestOptions = $requestOptions;
+        $this->requestTime = microtime(true) - $timerStart;
         return $this;
     }
 
@@ -145,7 +156,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     public function throwException($message)
     {
-        if(env('APP_ENV') === 'local') {
+        if (env('APP_ENV') === 'local') {
             $this->dd();
         } else {
             error_log($message . "\n" . json_encode($this->serialise()));
@@ -161,7 +172,8 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @param $args
      * @throws \Exception
      */
-    function __call($method, $args) {
+    function __call($method, $args)
+    {
         if ($method == 'throw') {
             call_user_func_array([$this, 'throwException'], $args);
         } else {
@@ -240,6 +252,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
             'url'            => $this->getRequestUrl(),
             'http-code'      => $this->getHttpCode(),
             'method'         => $this->getMethod(),
+            'requestTime'    => $this->requestTime,
             'requestOptions' => $this->getRequestOptions(),
             'response'       => $this->isJson($response) ? json_decode($response) : $response,
         ];
@@ -359,7 +372,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * e.g. of usage:
      *
      * function allPages() {
-     *     
+     *
      *     if ($this->success()) {
      *         $return = $this->fetchAllPageData();
      *         if (FALSE !== $return) {
@@ -370,7 +383,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      *     } else {
      *         throw new \Exception("Unknown error on paginated response. " . $response->errorsToString());
      *     }
-     *     
+     *
      * }
      *
      * @return array
@@ -383,11 +396,11 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
 
         do {
 
-            foreach( $tempResponse as $value ) {
+            foreach ($tempResponse as $value) {
                 $allItems[] = $value;
             }
 
-        } while( $tempResponse = $tempResponse->nextPage() );
+        } while ($tempResponse = $tempResponse->nextPage());
 
         return $allItems;
 
@@ -403,7 +416,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     public function allPages()
     {
-        
+
         if ($this->success()) {
             $return = $this->fetchAllPageData();
             if (FALSE !== $return) {
@@ -521,7 +534,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
         $serialised = $this->serialise();
         $backtrace = debug_backtrace();
 
-        if(count($backtrace) > 0) {
+        if (count($backtrace) > 0) {
             $serialised['caller'] = $backtrace[0]['file'] . '::' . $backtrace[0]['line'];
         }
 
@@ -536,7 +549,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     private function isJson($string)
     {
-        if(!is_string($string)) {
+        if (!is_string($string)) {
             return false;
         }
 
@@ -579,11 +592,11 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     public function count()
     {
-		if( is_array($this->response()->data) ) {
-			return count($this->response()->data);
-		} else {
-			throw new \Exception("Error: Attempting to count a non countable object.");
-		}
+        if (is_array($this->response()->data)) {
+            return count($this->response()->data);
+        } else {
+            throw new \Exception("Error: Attempting to count a non countable object.");
+        }
     }
 
     /**************** START Iterator methods ****************/
@@ -603,7 +616,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     private function iteratableCheck()
     {
-        if( !$this->dataIsIteratable() ) {
+        if (!$this->dataIsIteratable()) {
             throw new \Exception("Invalid argument api response is not iteratable.");
         }
     }

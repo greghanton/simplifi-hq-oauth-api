@@ -183,7 +183,7 @@ class AccessToken
     public static function clearCache()
     {
         $cacheFile = self::getAccessTokenFilePath();
-        if(is_file($cacheFile)) {
+        if (is_file($cacheFile)) {
             unlink($cacheFile);
         }
     }
