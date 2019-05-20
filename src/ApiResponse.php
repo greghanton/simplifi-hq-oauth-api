@@ -534,8 +534,9 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
         $serialised = $this->serialise();
         $backtrace = debug_backtrace();
 
-        if (count($backtrace) > 0) {
-            $serialised['caller'] = $backtrace[0]['file'] . '::' . $backtrace[0]['line'];
+        $caller = $this->getCallerFromBacktrace($backtrace);
+        if ($caller) {
+            $serialised['caller'] = $caller;
         }
 
         die(json_encode($serialised, JSON_PRETTY_PRINT));
@@ -685,4 +686,48 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
 
     /**************** END Iterator methods ****************/
 
+
+    /**
+     * Get the first frame of a backtrace outside this file
+     *
+     * @param $backtrace
+     * @return string
+     */
+    public function getCallerFromBacktrace($backtrace)
+    {
+
+        // NOTE: Php will not populate all elements of a frame every time
+        // e.g. 'line' will often be missing from a frame
+        // @see https://www.php.net/manual/en/function.debug-backtrace.php
+        // @see https://stackoverflow.com/questions/4581969/why-is-debug-backtrace-not-including-line-number-sometimes
+
+        if (count($backtrace) === 0) {
+            return null;
+        }
+
+        // Get the first part of the debug_backtrace outside this file
+        $i = 0;
+        while (
+            (isset($backtrace[$i]['file']) && $backtrace[$i]['file'] === __FILE__) ||
+            (isset($backtrace[$i]['class']) && $backtrace[$i]['class'] === __CLASS__)
+        ) {
+            $i++;
+        }
+
+        if ($i >= count($backtrace)) {
+            // No part of the debug_backtrace is outside this file
+            // So just grab the first frame
+            $i = 0;
+        }
+
+        if (isset($backtrace[$i]['file']) && isset($backtrace[$i]['line'])) {
+            return $backtrace[$i]['file'] . '::' . $backtrace[$i]['line'];
+        } elseif (isset($backtrace[$i]['class']) && isset($backtrace[$i]['function'])) {
+            return $backtrace[$i]['class'] .
+                (!empty($backtrace[$i]['type']) ? $backtrace[$i]['type'] : '::') .
+                $backtrace[$i]['function'];
+        }
+
+        return null;
+    }
 }
