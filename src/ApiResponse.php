@@ -54,7 +54,24 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
         $this->curl = $curl;
         $this->config = $config;
         $this->requestOptions = $requestOptions;
-        $this->requestTime = microtime(true) - $timerStart;
+        $this->requestTime = round(microtime(true) - $timerStart, 4);
+
+        // If the request took > 30 seconds to run then log it
+        if($this->requestTime > 30) {
+            $serialisedRequest = $this->serialise();
+
+            // Remove the authentication header
+            unset($serialisedRequest['requestOptions']['headers']['Authorization']);
+
+            // Response can potentially be massive, so truncate at 500 characters
+            $response = json_encode($serialisedRequest['response']);
+            $serialisedRequest['response'] = strlen($response) > 500 ?
+                substr($response, 0, 500) . '<TRUNCATED ' . strlen($response) . '>' :
+                $serialisedRequest['response'];
+
+            error_log("This request took > 30 seconds to run " . json_encode($serialisedRequest));
+        }
+
         return $this;
     }
 
