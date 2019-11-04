@@ -725,8 +725,8 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
         // Get the first part of the debug_backtrace outside this file
         $i = 0;
         while (
-            (isset($backtrace[$i]['file']) && $backtrace[$i]['file'] === __FILE__) ||
-            (isset($backtrace[$i]['class']) && $backtrace[$i]['class'] === __CLASS__)
+            (isset($backtrace[$i]['file']) && $backtrace[$i]['file'] === __FILE__)
+//            || (isset($backtrace[$i]['class']) && $backtrace[$i]['class'] === __CLASS__)
         ) {
             $i++;
         }
