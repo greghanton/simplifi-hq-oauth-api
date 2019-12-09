@@ -726,9 +726,16 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
         $i = 0;
         while (
             (isset($backtrace[$i]['file']) && $backtrace[$i]['file'] === __FILE__)
-//            || (isset($backtrace[$i]['class']) && $backtrace[$i]['class'] === __CLASS__)
+            || (isset($backtrace[$i]['class']) && $backtrace[$i]['class'] === __CLASS__)
         ) {
             $i++;
+        }
+
+        // if class is in previous stack then we need to minus one
+        if (isset($backtrace[$i - 1]['class']) && $backtrace[$i - 1]['class'] === __CLASS__ &&
+            isset($backtrace[$i - 1]['file']) && isset($backtrace[$i - 1]['line'])
+        ) {
+            $i--;
         }
 
         if ($i >= count($backtrace)) {
@@ -737,12 +744,41 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
             $i = 0;
         }
 
-        if (isset($backtrace[$i]['file']) && isset($backtrace[$i]['line'])) {
-            return $backtrace[$i]['file'] . '::' . $backtrace[$i]['line'];
-        } elseif (isset($backtrace[$i]['class']) && isset($backtrace[$i]['function'])) {
-            return $backtrace[$i]['class'] .
-                (!empty($backtrace[$i]['type']) ? $backtrace[$i]['type'] : '::') .
-                $backtrace[$i]['function'];
+        if ($i < 0) {
+            $i = 0;
+        }
+
+        $stacks = [];
+
+        // Grab the 3 closest stacks
+        for ($j = $i; $j < $i + 3; $j++) {
+
+            if (isset($backtrace[$j])) {
+
+                $stack = $backtrace[$j];
+
+                if (isset($stack['file']) && isset($stack['line'])) {
+
+                    // Remove the document root from the url as it's unnecessary
+                    $file = isset($_SERVER['DOCUMENT_ROOT']) ?
+                        preg_replace("/^" . preg_quote(realpath($_SERVER['DOCUMENT_ROOT'] . "/.."), '/') . "/", '', $stack['file']) :
+                        $stack['file'];
+
+                    $stacks[] = $file . '::' . $stack['line'];
+                } elseif (isset($stack['class']) && isset($stack['function'])) {
+                    $stacks[] = $stack['class'] .
+                        (!empty($stack['type']) ? $stack['type'] : '::') .
+                        $stack['function'];
+                } else {
+                    $stacks[] = null;
+                }
+
+            }
+
+        }
+
+        if ($stacks) {
+            return $stacks;
         }
 
         return null;
