@@ -62,4 +62,10 @@ return [
     'access_token_expire_buffer' => 10,
 
 
+    /*
+     * Seconds
+     * The maximum number of seconds to allow cURL functions to execute.
+     */
+    'CURLOPT_TIMEOUT' => env('SIMPLIFI_CURLOPT_TIMEOUT', 30),
+
 ];

@@ -154,6 +154,8 @@ class ApiRequest
             }
         }
 
+        $curl->setTimeout($config['CURLOPT_TIMEOUT']);
+
         $return = null;
         if (!$timerStart) {
             $timerStart = microtime(true);
