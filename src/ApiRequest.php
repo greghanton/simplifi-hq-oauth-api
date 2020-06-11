@@ -136,6 +136,7 @@ class ApiRequest
         $curl = new Curl();
 
         $curl->setTimeout(0);
+//        $curl->setTimeout($config['CURLOPT_TIMEOUT']);
 
         // TODO remove these (they are only here for testing)
         $curl->setOpt(CURLOPT_SSL_VERIFYPEER, false);
@@ -153,8 +154,6 @@ class ApiRequest
                 $curl->setHeader($key, $value);
             }
         }
-
-        $curl->setTimeout($config['CURLOPT_TIMEOUT']);
 
         $return = null;
         if (!$timerStart) {
