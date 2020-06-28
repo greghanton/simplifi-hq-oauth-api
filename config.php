@@ -5,6 +5,13 @@ return [
      * NOTE: UBER_... values are only added here for backwards compatibility and will be removed in a future release.
      */
 
+
+    /*
+     * The environment e.g. "local" / "staging" / "production"
+     */
+    'APP_ENV'                    => env('APP_ENV'),
+
+
     /*
      * Client id for Uber Accounting API OAuth
      */

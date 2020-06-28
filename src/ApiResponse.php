@@ -173,7 +173,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     public function throwException($message)
     {
-        if (env('APP_ENV') === 'local') {
+        if ($this->config['APP_ENV'] === 'local') {
             $this->dd();
         } else {
             error_log($message . "\n" . json_encode($this->serialise()));
