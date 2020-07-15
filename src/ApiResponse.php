@@ -57,7 +57,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
         $this->requestTime = round(microtime(true) - $timerStart, 4);
 
         // If the request took > 30 seconds to run then log it
-        if($this->requestTime > 30) {
+        if ($this->requestTime > 30) {
             $serialisedRequest = $this->serialise();
 
             // Remove the authentication header
@@ -428,8 +428,8 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * This function is the same as $this->fetchAllPageData() with a little additional error checking
      *
      * @return array
-     * @see fetchAllPageData
      * @throws \Exception
+     * @see fetchAllPageData
      */
     public function allPages()
     {

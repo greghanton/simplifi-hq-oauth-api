@@ -7,6 +7,12 @@ return [
 
 
     /*
+     * The version
+     */
+    'VERSION'                    => '1.0.0',
+
+
+    /*
      * The environment e.g. "local" / "staging" / "production"
      */
     'APP_ENV'                    => env('APP_ENV'),

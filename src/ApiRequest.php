@@ -155,6 +155,8 @@ class ApiRequest
             }
         }
 
+        $curl->setUserAgent(self::getDefaultUserAgent($config['VERSION']));
+
         $return = null;
         if (!$timerStart) {
             $timerStart = microtime(true);
@@ -283,6 +285,22 @@ class ApiRequest
     public static function addEventListener($event, $closure)
     {
         self::$events[$event][] = $closure;
+    }
+
+    /**
+     * Get the default user agent string
+     *
+     * @param string $urlVersion e.g. "1.0.0"
+     * @return string e.g.
+     *      "Simplifi-HQ-API/1.0.0 (+https://github.com/greghanton/simplifi-hq-oauth-api) PHP-Curl-Class/8.8.0 curl/7.58.0 PHP/7.4.5"
+     */
+    private static function getDefaultUserAgent($urlVersion)
+    {
+        $user_agent = 'Simplifi-HQ-API/' . $urlVersion . ' (+https://github.com/greghanton/simplifi-hq-oauth-api)';
+        $user_agent .= ' PHP-Curl-Class/' . Curl::VERSION;
+        $user_agent .= ' curl/' . (curl_version()['version']);
+        $user_agent .= ' PHP/' . PHP_VERSION;
+        return $user_agent;
     }
 
 }
