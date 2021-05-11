@@ -58,18 +58,12 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
 
         // If the request took > 30 seconds to run then log it
         if ($this->requestTime > 30) {
-            $serialisedRequest = $this->serialise();
+            $this->logRequest("This request took > 30 seconds to run.");
+        }
 
-            // Remove the authentication header
-            unset($serialisedRequest['requestOptions']['headers']['Authorization']);
-
-            // Response can potentially be massive, so truncate at 500 characters
-            $response = json_encode($serialisedRequest['response']);
-            $serialisedRequest['response'] = strlen($response) > 500 ?
-                substr($response, 0, 500) . '<TRUNCATED ' . strlen($response) . '>' :
-                $serialisedRequest['response'];
-
-            error_log("This request took > 30 seconds to run " . json_encode($serialisedRequest));
+        // If the URL > 2000 characters log it
+        if (strlen($this->getRequestUrl()) > 2000) {
+            $this->logRequest("This request's url is > 2000 characters in length.");        // Max url length could be as  little as 2,048
         }
 
         return $this;
@@ -703,6 +697,21 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
 
     /**************** END Iterator methods ****************/
 
+    private function logRequest($message)
+    {
+        $serialisedRequest = $this->serialise();
+
+        // Remove the authentication header
+        unset($serialisedRequest['requestOptions']['headers']['Authorization']);
+
+        // Response can potentially be massive, so truncate at 500 characters
+        $response = json_encode($serialisedRequest['response']);
+        $serialisedRequest['response'] = strlen($response) > 500 ?
+            substr($response, 0, 500) . '<TRUNCATED ' . strlen($response) . '>' :
+            $serialisedRequest['response'];
+
+        error_log("{$message} " . json_encode($serialisedRequest));
+    }
 
     /**
      * Get the first frame of a backtrace outside this file
