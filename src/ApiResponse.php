@@ -254,18 +254,25 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * Serialise the object
      * useful for debugging
      *
+     * @param $anonymise boolan Remove sensitive info from the result
      * @return array
      */
-    public function serialise()
+    public function serialise($anonymise = true)
     {
         $response = $this->response();
+
+        $backtrace = debug_backtrace();
+
+        $caller = $this->getCallerFromBacktrace(debug_backtrace());
+
         return [
             'url'            => $this->getRequestUrl(),
             'http-code'      => $this->getHttpCode(),
             'method'         => $this->getMethod(),
             'requestTime'    => $this->requestTime,
-            'requestOptions' => $this->getRequestOptions(),
+            'requestOptions' => $this->getRequestOptions($anonymise),
             'response'       => $this->isJson($response) ? json_decode($response) : $response,
+            'caller'         => $caller ?: null,
         ];
     }
 
@@ -289,12 +296,24 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     }
 
     /**
+     * @param $anonymise boolan Remove sensitive info from the result
      * @return array
      * @see requestOptions
      */
-    public function getRequestOptions()
+    public function getRequestOptions($anonymise = true)
     {
-        return $this->requestOptions;
+        $options = $this->requestOptions;
+
+        if ($anonymise) {
+            // In most cases the user doesn't need/want the Authorization header. Also; there could be a security concer
+            // if it ends up in the logs "Authorization": "Bearer eyJ0eXAiO...
+            if (!empty($options['headers']['Authorization'])) {
+                $options['headers']['Authorization'] = preg_replace('/Bearer (.*)/i', 'Bearer ### REDACTED ###', $options['headers']['Authorization']);
+            }
+        }
+
+
+        return $options;
     }
 
     /**
@@ -543,13 +562,6 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     {
         header("Content-type: application/json");
         $serialised = $this->serialise();
-        $backtrace = debug_backtrace();
-
-        $caller = $this->getCallerFromBacktrace($backtrace);
-        if ($caller) {
-            $serialised['caller'] = $caller;
-        }
-
         die(json_encode($serialised, JSON_PRETTY_PRINT));
     }
 

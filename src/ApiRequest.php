@@ -205,6 +205,13 @@ class ApiRequest
             throw new \Exception("Invalid method");
         }
 
+        // after request?
+        if (isset(self::$events['afterRequest'])) {
+            foreach (self::$events['afterRequest'] as $event) {
+                $event($return);
+            }
+        }
+
         return $return;
 
     }
@@ -280,11 +287,11 @@ class ApiRequest
      * Add an event listener
      *
      * @param $event string e.g. "beforeRequest"
-     * @param $closure \Closure function to be called
+     * @param $callback \callable function to be called
      */
-    public static function addEventListener($event, $closure)
+    public static function addEventListener($event, $callback)
     {
-        self::$events[$event][] = $closure;
+        self::$events[$event][] = $callback;
     }
 
     /**
