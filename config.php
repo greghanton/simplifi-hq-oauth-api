@@ -51,7 +51,7 @@ return [
     /*
      * URL base
      */
-    'url-base'                   => env('SIMPLIFI_URL_BASE') ?: env('UBER_URL_BASE', 'https://api.simplifi.com/'),
+    'url-base'                   => env('SIMPLIFI_API_URL_BASE') ?: env('SIMPLIFI_URL_BASE') ?: env('UBER_URL_BASE', 'https://api.simplifi.com/'),
 
 
     /*
@@ -73,5 +73,16 @@ return [
      * Here you can specify e.g. don't use an access token that is going to expire in 10 seconds
      */
     'access_token_expire_buffer' => 10,
+
+
+    /*
+     * Callable
+     * Where to send error messages. Errors will be sent as a single string.
+     * SIMPLIFI_API_ERROR_LOG_FUNCTION should be a json encoded callable EG:
+     *  • "error_log"
+     *  • ["\App\Classes\Utils", "notifyError"]
+     *  • If using dotenv the .env file might look like: SIMPLIFI_API_ERROR_LOG_FUNCTION="[\"\\\\App\\\\Classes\\\\Utils\", \"notifyError\"]"
+     */
+    'error_log_function' => json_decode(env('SIMPLIFI_API_ERROR_LOG_FUNCTION', '"error_log"'), true),
 
 ];

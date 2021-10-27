@@ -170,7 +170,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
         if ($this->config['APP_ENV'] === 'local') {
             $this->dd();
         } else {
-            error_log($message . "\n" . json_encode($this->serialise()));
+            call_user_func($this->config['error_log_function'], $message . "\n" . json_encode($this->serialise()));
             $message = $message ? $message . "\n" : '';
             throw new \Exception($message . $this->errorsToString());
         }
@@ -266,9 +266,9 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
         $caller = $this->getCallerFromBacktrace(debug_backtrace());
 
         return [
-            'url'            => $this->getRequestUrl(),
-            'http-code'      => $this->getHttpCode(),
             'method'         => $this->getMethod(),
+            'http-code'      => $this->getHttpCode(),
+            'url'            => $this->getRequestUrl(),
             'requestTime'    => $this->requestTime,
             'requestOptions' => $this->getRequestOptions($anonymise),
             'response'       => $this->isJson($response) ? json_decode($response) : $response,
@@ -722,7 +722,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
             substr($response, 0, 500) . '<TRUNCATED ' . strlen($response) . '>' :
             $serialisedRequest['response'];
 
-        error_log("{$message} " . json_encode($serialisedRequest));
+        call_user_func($this->config['error_log_function'], "{$message} " . json_encode($serialisedRequest));
     }
 
     /**

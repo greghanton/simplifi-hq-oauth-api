@@ -160,7 +160,7 @@ class AccessToken
     {
         if (!@file_put_contents(self::getAccessTokenFilePath(), '<?php return ' . var_export((array)$data, true) . ';')) {
 
-            error_log(
+            call_user_func(self::$config['error_log_function'], 
                 "Error writing to file.\n" .
                 "  When attempting to cache access_token to json file.\n" .
                 "  File: '" . self::getAccessTokenFilePath() . "'\n" .
