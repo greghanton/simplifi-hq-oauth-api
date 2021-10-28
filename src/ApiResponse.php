@@ -45,8 +45,8 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      *
      * @param array $config This is the config array from the ../config.php file (sometimes some values will be
      *      overridden by the user but usually it is exactly the array from the file)
-     * @param $curl Curl instance of the php-curl-class/php-curl-class librarys Curl class
-     * @param array $requestOptions this contains the request method, url etc @see ApiRequest::$defaultRequestOptions
+     * @param $curl Curl instance of the php-curl-class/php-curl-class library Curl class
+     * @param array $requestOptions this contains the request method, URL etc @see ApiRequest::$defaultRequestOptions
      * @param $timerStart float the time that the curl request was initiated
      */
     public function __construct($config, Curl $curl, $requestOptions, $timerStart)
@@ -61,9 +61,9 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
             $this->logRequest("This request took > 30 seconds to run.");
         }
 
-        // If the URL > 2000 characters log it
-        if (strlen($this->getRequestUrl()) > 2000) {
-            $this->logRequest("This request's url is > 2000 characters in length.");        // Max url length could be as  little as 2,048
+        // If the URL > 80000 characters log it
+        if (strlen($this->getRequestUrl()) > 80000) {
+            $this->logRequest("This requests url is > 80000 characters in length.");        // Max url length could be as little as 2,048
         }
 
         return $this;
@@ -71,7 +71,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
 
     /**
      * Check if there was an error with the request e.g. a 404 occurred
-     * Will return true if http response code is not in 4xx or 5xx AND there was no curl_errno() e.g. 404
+     * Will return true if HTTP response code is not in 4xx or 5xx AND there was no curl_errno() e.g. 404
      *
      * NOTE: The Uber Accounting API is setup so that if an errors occur it will return a status code of not 200
      *      and will set the "errors" array element
@@ -100,9 +100,9 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     /**
      * Return an array of errors that occurred (may be blank if no errors occurred)
      * The end point may return an array of errors if it finds an error
-     * Or if there was an http error then return that
+     * Or if there was an HTTP error then return that
      *
-     * @return array of errors (may be blank) array elemnts are of the form:
+     * @return array of errors (may be blank) array elements are of the form:
      *      ['title'=>'string message (always present)', 'message'=>'detailed description (may not be set)']
      */
     public function errors()
@@ -220,7 +220,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     }
 
     /**
-     * Get the full url of the request
+     * Get the full URL of the request
      * useful for debugging
      *
      * @return string
@@ -254,7 +254,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * Serialise the object
      * useful for debugging
      *
-     * @param $anonymise boolan Remove sensitive info from the result
+     * @param $anonymise boolean Remove sensitive info from the result
      * @return array
      */
     public function serialise($anonymise = true)
@@ -296,7 +296,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     }
 
     /**
-     * @param $anonymise boolan Remove sensitive info from the result
+     * @param $anonymise boolean Remove sensitive info from the result
      * @return array
      * @see requestOptions
      */
@@ -408,7 +408,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      *         if (FALSE !== $return) {
      *             return $return;
      *         } else {
-     *             throw new \Exception("Unknown error while fetching all pages of paginated api response.");
+     *             throw new \Exception("Unknown error while fetching all pages of paginated API response.");
      *         }
      *     } else {
      *         throw new \Exception("Unknown error on paginated response. " . $response->errorsToString());
@@ -505,7 +505,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     }
 
     /**
-     * Like phps native trigger_error($string, E_USER_NOTICE) function except the file and line number will be from the closest
+     * Like PHPs native trigger_error($string, E_USER_NOTICE) function except the file and line number will be from the closest
      * debug_backtrace() value outside this object
      *
      * @param string $message
@@ -566,10 +566,10 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     }
 
     /**
-     * Check if string is valid json
+     * Check if string is valid JSON
      *
-     * @param string $string string that we want to check if it is json format or not
-     * @return bool true if the $string passed in is json
+     * @param string $string string that we want to check if it is JSON format or not
+     * @return bool true if the $string passed in is JSON
      */
     private function isJson($string)
     {
@@ -626,10 +626,10 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     /**************** START Iterator methods ****************/
 
     /**
-     * Is the api response iteratable?
+     * Is the api response iterable?
      * @return bool
      */
-    private function dataIsIteratable()
+    private function dataIsIterable()
     {
         return is_array($this->response()->data);
     }
@@ -638,10 +638,10 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * Throw an exception if response data is not an array
      * @throws \Exception
      */
-    private function iteratableCheck()
+    private function iterableCheck()
     {
-        if (!$this->dataIsIteratable()) {
-            throw new \Exception("Invalid argument api response is not iteratable.");
+        if (!$this->dataIsIterable()) {
+            throw new \Exception("Invalid argument api response is not iterable.");
         }
     }
 
@@ -653,7 +653,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     public function rewind()
     {
-        $this->iteratableCheck();
+        $this->iterableCheck();
         reset($this->response()->data);
     }
 
@@ -665,7 +665,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     public function current()
     {
-        $this->iteratableCheck();
+        $this->iterableCheck();
         return current($this->response()->data);
     }
 
@@ -677,7 +677,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     public function key()
     {
-        $this->iteratableCheck();
+        $this->iterableCheck();
         return key($this->response()->data);
     }
 
@@ -689,7 +689,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     public function next()
     {
-        $this->iteratableCheck();
+        $this->iterableCheck();
         return next($this->response()->data);
     }
 
@@ -702,7 +702,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     public function valid()
     {
-        $this->iteratableCheck();
+        $this->iterableCheck();
         $key = key($this->response()->data);
         return ($key !== NULL && $key !== FALSE);
     }
@@ -726,7 +726,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     }
 
     /**
-     * Get the first frame of a backtrace outside this file
+     * Get the first frame of a back trace outside this file
      *
      * @param $backtrace
      * @return string

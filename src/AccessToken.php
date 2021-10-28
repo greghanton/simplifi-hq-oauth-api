@@ -35,7 +35,7 @@ class AccessToken
     {
         self::$config = $config;
 
-        // First Attempt to get an access_token from the json file
+        // First Attempt to get an access_token from the JSON file
         if ($accessToken = self::getCachedAccessToken()) {
             return $accessToken;
         }
@@ -178,7 +178,7 @@ class AccessToken
     }
 
     /**
-     * Remove the cached oauth token in %temp%
+     * Remove the cached OAuth token in %temp%
      */
     public static function clearCache()
     {

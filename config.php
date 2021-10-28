@@ -31,7 +31,7 @@ return [
 
 
     /*
-     * Username for Uber Accounting API OAuth
+     * Username for Uber Accounting API OAuth (probably an email)
      */
     'username'                   => env('SIMPLIFI_API_USERNAME') ?: env('UBER_API_USERNAME'),
 

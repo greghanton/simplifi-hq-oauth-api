@@ -12,7 +12,7 @@ class ApiRequest
 {
 
     /**
-     * Location of the config file (contains Oauth credentials etc.)
+     * Location of the config file (contains OAuth credentials etc.)
      */
     const CONFIG_FILE = __DIR__ . '/../config.php';
 
@@ -42,7 +42,7 @@ class ApiRequest
 
         /**
          * Endpoint to request.
-         * This will be appended to 'url-base' in config.php to get the full url
+         * This will be appended to 'url-base' in config.php to get the full URL
          * If method=GET then 'data' will be appended to this as well using http_build_query()
          *
          * This MUST BE PASSED IN via $options in self::request()
@@ -54,7 +54,7 @@ class ApiRequest
          * This can be used for any request GET/POST/etc.
          * May be:
          *      Array: of key value pairs ready for http_build_query()
-         *      String: To be set as the request payload e.g. for a json request
+         *      String: To be set as the request payload e.g. for a JSON request
          *
          * This MUST BE PASSED IN via $options in self::request()
          */
@@ -65,7 +65,7 @@ class ApiRequest
          * This can be used for any request GET/POST/etc.
          * May be:
          *      Array: of key value pairs ready for http_build_query()
-         *      String: To be set as the request payload e.g. for a json request
+         *      String: To be set as the request payload e.g. for a JSON request
          *
          * This MUST BE PASSED IN via $options in self::request()
          */
@@ -81,7 +81,7 @@ class ApiRequest
 
         /**
          * Expected response type. If response does not match this then it is considered invalid
-         *      'json'(default): If response body is not valid json then ApiResponse->success() will return false
+         *      'json'(default): If response body is not valid JSON then ApiResponse->success() will return false
          *      NULL: don't care what format the response body is in.
          */
         'response-type'                     => 'json',
@@ -101,7 +101,7 @@ class ApiRequest
      *      This will almost never by passed in
      * @param float leave this blank it is an internal variable
      * @return ApiResponse result from the request i.e. check ApiResponse::success() to see if it was successful
-     * @throws \Exception if url not specified
+     * @throws \Exception if URL not specified
      * @see $defaultRequestOptions
      * @see ApiResponse::success()
      */
@@ -234,7 +234,7 @@ class ApiRequest
     {
         if ($thisOptions['retry-on-authentication-exception'] && self::responseIsAuthenticationException($curl)) {
             AccessToken::clearCache();
-            $options['retry-on-authentication-exception'] = false;      // Prevent infinate recursion
+            $options['retry-on-authentication-exception'] = false;      // Prevent infinite recursion
             return self::request($options, $overrideConfig, $timerStart);
         }
         $options['retry-on-authentication-exception'] = true;      // Reset this variable
