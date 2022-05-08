@@ -558,12 +558,14 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      *
      * @see serialise()
      */
-    public function dd()
+    public function dd($prettyHtml = true)
     {
         // If error is html just output the html because chances are its a nicly formatted laravel exception
-        $doctypeString = "<!DOCTYPE html>";
-        if (is_string($this->response()) && substr($this->response(), 0, strlen($doctypeString)) === $doctypeString) {
-            die($this->response());
+        if ($prettyHtml) {
+            $doctypeString = "<!DOCTYPE html>";
+            if (is_string($this->response()) && substr($this->response(), 0, strlen($doctypeString)) === $doctypeString) {
+                die($this->response());
+            }
         }
 
         header("Content-type: application/json");
