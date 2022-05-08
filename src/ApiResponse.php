@@ -168,15 +168,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     public function throwException($message)
     {
         if ($this->config['APP_ENV'] === 'local') {
-
-            // If error is html just output the html because chances are its a nicly formatted laravel exception
-            $doctypeString = "<!DOCTYPE html>";
-            if (is_string($this->response()) && substr($this->response(), 0, strlen($doctypeString)) === $doctypeString) {
-                die($this->response());
-            } else {
-                $this->dd();
-            }
-
+            $this->dd();
         } else {
             call_user_func($this->config['error_log_function'], $message . "\n" . json_encode($this->serialise()));
             $message = $message ? $message . "\n" : '';
@@ -568,6 +560,12 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      */
     public function dd()
     {
+        // If error is html just output the html because chances are its a nicly formatted laravel exception
+        $doctypeString = "<!DOCTYPE html>";
+        if (is_string($this->response()) && substr($this->response(), 0, strlen($doctypeString)) === $doctypeString) {
+            die($this->response());
+        }
+
         header("Content-type: application/json");
         $serialised = $this->serialise();
         die(json_encode($serialised, JSON_PRETTY_PRINT));
