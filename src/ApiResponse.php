@@ -170,7 +170,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
         if ($this->config['APP_ENV'] === 'local') {
             $this->dd();
         } else {
-            call_user_func($this->config['error_log_function'], $message . "\n" . json_encode($this->serialise()));
+            $this->logRequest($message);
             $message = $message ? $message . "\n" : '';
             throw new \Exception($message . $this->errorsToString());
         }
@@ -735,11 +735,12 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
         // Remove the authentication header
         unset($serialisedRequest['requestOptions']['headers']['Authorization']);
 
-        // Response can potentially be massive, so truncate at 500 characters
-        $response = json_encode($serialisedRequest['response']);
-        $serialisedRequest['response'] = strlen($response) > 500 ?
-            substr($response, 0, 500) . '<TRUNCATED ' . strlen($response) . '>' :
-            $serialisedRequest['response'];
+        // Some parts of the request can be massive so lets truncate all to 500 characters
+        array_walk_recursive($serialisedRequest, function (&$v) {
+            if (is_string($v) && strlen($v) > 500) {
+                $v = substr($v, 0, 500) . '<TRUNCATED ' . strlen($v) . '>';
+            }
+        });
 
         call_user_func($this->config['error_log_function'], "{$message} " . json_encode($serialisedRequest));
     }
