@@ -41,6 +41,17 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     private $requestTime;
 
     /**
+     * The response created event identifier
+     */
+    const EVENT_RESPONSE_CREATED = 'responseCreated';
+
+    /**
+     * An array of events added by self::addEventListener()
+     * @var array
+     */
+    private static $events = [];
+
+    /**
      * ApiResponse constructor.
      *
      * @param array $config This is the config array from the ../config.php file (sometimes some values will be
@@ -65,6 +76,9 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
         if (strlen($this->getRequestUrl()) > 80000) {
             $this->logRequest("This requests url is > 80000 characters in length.");        // Max url length could be as little as 2,048
         }
+
+        // Fire the response created event
+        $this->fireEvent(self::EVENT_RESPONSE_CREATED, [$this]);
 
         return $this;
     }
@@ -824,4 +838,31 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
 
         return null;
     }
+
+    /**
+     * Add an event listener
+     *
+     * @param $eventName string e.g. "beforeRequest"
+     * @param $callback Closure function to be called
+     */
+    public static function addEventListener(string $eventName, \Closure $callback)
+    {
+        self::$events[$eventName][] = $callback;
+    }
+
+    /**
+     * Trigger an event loaded by addEventListener
+     *
+     * @param string $eventName The event identifier to trigger
+     * @param array $callbackParameters The parameters to send to the callback
+     */
+    public static function fireEvent(string $eventName, array $callbackParameters)
+    {
+        if (isset(self::$events[$eventName])) {
+            foreach (self::$events[$eventName] as $event) {
+                call_user_func_array($event, $callbackParameters);
+            }
+        }
+    }
+
 }

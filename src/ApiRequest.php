@@ -17,6 +17,11 @@ class ApiRequest
     const CONFIG_FILE = __DIR__ . '/../config.php';
 
     /**
+     * The before request event identifier
+     */
+    const EVENT_BEFORE_REQUEST = 'beforeRequest';
+
+    /**
      * An array of events added by self::addEventListener()
      * @var array
      */
@@ -126,8 +131,8 @@ class ApiRequest
             throw new \Exception("ERROR: Url not specified for curl request.");
         }
 
-        if (isset(self::$events['beforeRequest'])) {
-            foreach (self::$events['beforeRequest'] as $event) {
+        if (isset(self::$events[self::EVENT_BEFORE_REQUEST])) {
+            foreach (self::$events[self::EVENT_BEFORE_REQUEST] as $event) {
                 $event($thisOptions, $config);
             }
         }
