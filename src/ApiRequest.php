@@ -74,7 +74,9 @@ class ApiRequest
          *
          * This MUST BE PASSED IN via $options in self::request()
          */
-        'headers'                           => [],
+        'headers' => [
+            'Accept' => 'application/json',
+        ],
 
         /**
          * Automatically add access token to the request
