@@ -69,12 +69,12 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
 
         // If the request took > 30 seconds to run then log it
         if ($this->requestTime > 30) {
-            $this->logRequest("This request took > 30 seconds to run.");
+            $this->logRequest("This request took > 30 seconds to run ({$this->requestTime}s).");
         }
 
         // If the URL > 80000 characters log it
         if (strlen($this->getRequestUrl()) > 80000) {
-            $this->logRequest("This requests url is > 80000 characters in length.");        // Max url length could be as little as 2,048
+            $this->logRequest("This requests url is > 80000 characters in length (" . strlen($this->getRequestUrl()) . ").");        // Max url length could be as little as 2,048
         }
 
         // Fire the response created event
