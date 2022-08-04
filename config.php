@@ -49,9 +49,9 @@ return [
 
 
     /*
-     * URL base
+     * URL base EG 'https://api.simplifi.com/'
      */
-    'url-base'                   => env('SIMPLIFI_API_URL_BASE', 'https://api.simplifi.com/'),
+    'url-base'                   => env('SIMPLIFI_API_URL_BASE'),
 
 
     /*
