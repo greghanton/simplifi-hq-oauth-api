@@ -146,9 +146,13 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @return string
      * @see getSimpleErrorsArray()
      */
-    public function errorsToString($glue = ", ")
+    public function errorsToString($glue = ", ", $escape = false)
     {
-        return implode($glue, $this->getSimpleErrorsArray());
+        $errors = $this->getSimpleErrorsArray();
+        if ($escape) {
+            array_walk($errors, fn($value) => htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8', $doubleEncode));
+        }
+        return implode($glue, $errors);
     }
 
     /**

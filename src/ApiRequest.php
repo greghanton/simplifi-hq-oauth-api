@@ -12,6 +12,15 @@ class ApiRequest
 {
 
     /**
+     * Used when parsing in a url as an array
+     * EG ApiRequest::request(['url' => ["sales/$/invoice", 102], 'method' => 'get'])
+     * the url would be decoded to sales/102/invoice
+     *
+     * @var string this can mutiple characters EG "%%"
+     */
+    const URL_REPLACEMENT_CHARACTER = '$';
+
+    /**
      * Location of the config file (contains OAuth credentials etc.)
      */
     const CONFIG_FILE = __DIR__ . '/../config.php';
@@ -75,7 +84,8 @@ class ApiRequest
          * This MUST BE PASSED IN via $options in self::request()
          */
         'headers' => [
-            'Accept' => 'application/json',
+            'Accept'       => 'application/json',
+            //'Content-type' => 'application/json',
         ],
 
         /**
@@ -151,9 +161,9 @@ class ApiRequest
         //$curl->setOpt(CURLOPT_FOLLOWLOCATION, true);
 
         if (isset($thisOptions['url-absolute'])) {
-            $url = $config['url-base'] . $thisOptions['url-absolute'];
+            $url = $config['url-base'] . self::urlToString($thisOptions['url-absolute']);
         } else {
-            $url = $config['url-base'] . $config['url-version'] . ltrim($thisOptions['url'], '/\\');
+            $url = $config['url-base'] . $config['url-version'] . self::urlToString($thisOptions['url']);
         }
 
         if (isset($thisOptions['headers'])) {
@@ -315,6 +325,68 @@ class ApiRequest
         $user_agent .= ' curl/' . (curl_version()['version']);
         $user_agent .= ' PHP/' . PHP_VERSION;
         return $user_agent;
+    }
+
+    /**
+     * Get the url as a string
+     *
+     * @param string|array $url EG:
+     *      - "sales/102/invoice"
+     *      - OR ["sales/$/invoice", 102]
+     * @return void
+     */
+    private static function urlToString($url)
+    {
+        if (is_string($url)) {
+            return ltrim($url, '/\\');
+        } else if (is_array($url)) {
+            if (!count($url)) {
+                throw new \Exception("Invalid url");
+            }
+
+            // Get the string part of the URL EG "sales/$/invoice"
+            $urlString = array_shift($url);
+
+            // Get the array of url parts EG [102]
+            array_walk($url, fn($value) => rawurlencode($value));
+
+            // combine $urlString and $url into a string EG "sales/102/invoice"
+            return ltrim(self::substituteStringReplacements($urlString, $url), '/\\');
+        } else {
+            return '';
+        }
+    }
+
+    /**
+     * Replace the $ parts of the string with the values in the array
+     *
+     * @param string $string EG "sales/$/invoice"
+     * @param array $replacments EG [102]
+     * @return string EG "sales/102/invoice"
+     */
+    private static function substituteStringReplacements($string, $replacments)
+    {
+
+        // Split the string into parts
+        $stringParts = explode(self::URL_REPLACEMENT_CHARACTER, $string);
+
+        // Check that the number of replacement characters matches the number of replacment strings.
+        if (count($stringParts) !== count($replacments) + 1) {
+            throw new \Exception("Invalid url number of replacement characters is incorrect");
+        }
+
+        // Make sure the arrays have numerical indexes
+        $stringParts = array_values($stringParts);
+        $replacments = array_values($replacments);
+
+        // Now construct the output string
+        $output = "";
+        foreach ($stringParts as $index => $stringPart) {
+            $output .= $stringPart . ($replacments[$index] ?? '');
+        }
+
+        return $output;
+
     }
 
 }
