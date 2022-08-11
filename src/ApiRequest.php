@@ -83,8 +83,8 @@ class ApiRequest
          *
          * This MUST BE PASSED IN via $options in self::request()
          */
-        'headers' => [
-            'Accept'       => 'application/json',
+        'headers'                           => [
+            'Accept' => 'application/json',
             //'Content-type' => 'application/json',
         ],
 
@@ -164,6 +164,12 @@ class ApiRequest
             $url = $config['url-base'] . self::urlToString($thisOptions['url-absolute']);
         } else {
             $url = $config['url-base'] . $config['url-version'] . self::urlToString($thisOptions['url']);
+        }
+
+        if (!empty($config['headers'])) {
+            foreach ($config['headers'] as $key => $value) {
+                $curl->setHeader($key, $value);
+            }
         }
 
         if (isset($thisOptions['headers'])) {

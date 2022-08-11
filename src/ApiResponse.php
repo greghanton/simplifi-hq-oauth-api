@@ -767,7 +767,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * Get the first frame of a back trace outside this file
      *
      * @param $backtrace
-     * @return string
+     * @return array|null
      */
     public function getCallerFromBacktrace($backtrace)
     {
@@ -846,8 +846,9 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     /**
      * Add an event listener
      *
-     * @param $eventName string e.g. "beforeRequest"
-     * @param $callback Closure function to be called
+     * @param string $eventName e.g. "beforeRequest"
+     * @param \Closure $callback function to be called
+     * @return void
      */
     public static function addEventListener(string $eventName, \Closure $callback)
     {

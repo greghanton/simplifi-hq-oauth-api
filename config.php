@@ -1,11 +1,6 @@
 <?php
 return [
 
-    /**
-     * NOTE: UBER_... values are only added here for backwards compatibility and will be removed in a future release.
-     */
-
-
     /*
      * The version
      */
@@ -19,25 +14,25 @@ return [
 
 
     /*
-     * Client id for Uber Accounting API OAuth
+     * Client id for OAuth API 
      */
     'client_id'                  => env('SIMPLIFI_API_CLIENT_ID'),
 
 
     /*
-     * Client secret for Uber Accounting API OAuth
+     * Client secret for OAuth API 
      */
     'client_secret'              => env('SIMPLIFI_API_CLIENT_SECRET'),
 
 
     /*
-     * Username for Uber Accounting API OAuth (probably an email)
+     * Username for OAuth API  (probably an email)
      */
     'username'                   => env('SIMPLIFI_API_USERNAME'),
 
 
     /*
-     * Password for Uber Accounting API OAuth
+     * Password for OAuth API 
      */
     'password'                   => env('SIMPLIFI_API_PASSWORD'),
 
@@ -81,8 +76,18 @@ return [
      * SIMPLIFI_API_ERROR_LOG_FUNCTION should be a json encoded callable EG:
      *  • "error_log"
      *  • ["\App\Classes\Utils", "notifyError"]
-     *  • If using dotenv the .env file might look like: SIMPLIFI_API_ERROR_LOG_FUNCTION="[\"\\\\App\\\\Classes\\\\Utils\", \"notifyError\"]"
+     *  • If using dotenv the .env file might look like:
+     * SIMPLIFI_API_ERROR_LOG_FUNCTION="[\"\\\\App\\\\Classes\\\\Utils\", \"notifyError\"]"
      */
     'error_log_function' => json_decode(env('SIMPLIFI_API_ERROR_LOG_FUNCTION', '"error_log"'), true),
+
+
+    /*
+     * JSON encoded array of headers to send with every request
+     * These are only the default headers set, and they can be overridden when sending a request
+     *  • If using dotenv the .env file might look like:
+     * SIMPLIFI_API_DEFAULT_HEADERS="{\"Accept\":\"application/json\",\"Content-type\":\"application/json\"}"
+     */
+    'headers' => env('SIMPLIFI_API_DEFAULT_HEADERS') ? json_decode(env('SIMPLIFI_API_DEFAULT_HEADERS'), true) : null,
 
 ];

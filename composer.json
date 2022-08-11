@@ -6,6 +6,7 @@
     }
   },
   "require": {
-    "php-curl-class/php-curl-class": "*"
+    "php-curl-class/php-curl-class": "*",
+    "ext-json": "*"
   }
 }
