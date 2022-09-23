@@ -167,7 +167,8 @@ class ApiRequest
         }
 
         if (!empty($config['headers'])) {
-            foreach ($config['headers'] as $key => $value) {
+            $configHeaders = is_string($config['headers']) ? json_decode($config['headers'], true) : $config['headers'];
+            foreach ($configHeaders as $key => $value) {
                 $curl->setHeader($key, $value);
             }
         }

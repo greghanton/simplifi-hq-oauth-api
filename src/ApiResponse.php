@@ -760,7 +760,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
             }
         });
 
-        call_user_func($this->config['error_log_function'], "{$message} " . json_encode($serialisedRequest));
+        call_user_func(AccessToken::getCallableLogFunction(), "{$message} " . json_encode($serialisedRequest));
     }
 
     /**

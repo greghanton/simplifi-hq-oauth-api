@@ -98,6 +98,7 @@ return [
          *  • 'get', 'set', 'del' must all be Callables
          *  • e.g. ["\App\Classes\MyRedis", "get"]
          *  • If using dotenv your .env file might look like:
+         * SIMPLIFI_API_ACCESS_TOKEN_STORE_AS=custom
          * SIMPLIFI_API_ACCESS_TOKEN_CUSTOM_KEY=simplifi-hq-oauth-api-access-token
          * SIMPLIFI_API_ACCESS_TOKEN_GET="[\"\\\\App\\\\Classes\\\\MyRedis\", \"get\"]"
          * SIMPLIFI_API_ACCESS_TOKEN_SET="[\"\\\\App\\\\Classes\\\\MyRedis\", \"set\"]"
@@ -143,7 +144,7 @@ return [
      *  • If using dotenv your .env file might look like:
      * SIMPLIFI_API_ERROR_LOG_FUNCTION="[\"\\\\App\\\\Classes\\\\Utils\", \"notifyError\"]"
      */
-    'error_log_function'         => json_decode(env('SIMPLIFI_API_ERROR_LOG_FUNCTION', '"error_log"'), true),
+    'error_log_function'         => env('SIMPLIFI_API_ERROR_LOG_FUNCTION', '"error_log"'),
 
 
     /*
@@ -152,6 +153,6 @@ return [
      *  • If using dotenv your .env file might look like:
      * SIMPLIFI_API_DEFAULT_HEADERS="{\"Accept\":\"application/json\",\"Content-type\":\"application/json\"}"
      */
-    'headers'                    => env('SIMPLIFI_API_DEFAULT_HEADERS') ? json_decode(env('SIMPLIFI_API_DEFAULT_HEADERS'), true) : null,
+    'headers'                    => env('SIMPLIFI_API_DEFAULT_HEADERS'),
 
 ];

@@ -162,7 +162,7 @@ class AccessToken
     {
         if ($error = self::actuallyCacheAccessToken($data)) {
 
-            call_user_func(self::$config['error_log_function'], $error);
+            call_user_func(self::getCallableLogFunction(), $error);
 
             trigger_error($error, E_USER_NOTICE);
 
@@ -184,7 +184,7 @@ class AccessToken
         } else if ((self::$config['access_token']['store_as'] ?? null) === 'custom') {
 
             call_user_func(
-                self::$config['access_token']['custom']['del'],
+                json_decode(self::$config['access_token']['custom']['del'], true),
                 self::$config['access_token']['custom']['custom_key']
             );
 
@@ -214,7 +214,7 @@ class AccessToken
         } else if ((self::$config['access_token']['store_as'] ?? null) === 'custom') {
 
             if ($accessToken = call_user_func(
-                self::$config['access_token']['custom']['get'],
+                json_decode(self::$config['access_token']['custom']['get'], true),
                 self::$config['access_token']['custom']['custom_key']
             )) {
                 if ($accessToken = @json_decode($accessToken, true)) {
@@ -252,7 +252,7 @@ class AccessToken
 
             try {
                 call_user_func(
-                    self::$config['access_token']['custom']['set'],
+                    json_decode(self::$config['access_token']['custom']['set'], true),
                     self::$config['access_token']['custom']['custom_key'],
                     json_encode($data)
                 );
@@ -263,6 +263,15 @@ class AccessToken
         }
 
         return null;
+    }
+
+    public static function getCallableLogFunction()
+    {
+        $setting = self::$config['error_log_function'];
+        if (is_string($setting)) {
+            $setting = json_decode($setting, true);
+        }
+        return $setting;
     }
 
 }
