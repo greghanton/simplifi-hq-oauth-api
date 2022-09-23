@@ -54,10 +54,7 @@ class AccessToken
      */
     private static function getCachedAccessToken()
     {
-        if (file_exists(self::getAccessTokenFilePath())) {
-
-            // the cache file exists
-            $accessToken = require(self::getAccessTokenFilePath());
+        if ($accessToken = self::actuallyGetCachedAccessToken()) {
 
             // Ignore any access token that has expired or is about to expire
             if (!empty($accessToken['access_token']) &&
@@ -117,7 +114,7 @@ class AccessToken
 
             if ($andCache) {
 
-                self::cacheAccessToken($data);
+                self::cacheAccessToken((array)$data);
 
             }
 
@@ -132,21 +129,26 @@ class AccessToken
 
     /**
      * Get the absolute path to the access token file location
+     * This is only used when 'SIMPLIFI_API_ACCESS_TOKEN_STORE_AS'='temp_file'
      *
      * @return string e.g. 'G:/Windows/Temp/ua-access-token.php'
      * @throws \Exception
      */
     private static function getAccessTokenFilePath()
     {
-        if (empty(self::$config['access_token_filename'])) {
+        if ((self::$config['access_token']['store_as'] ?? null) !== 'temp_file') {
+            // This indicates ta coding error.
+            throw new \Exception("Impossible");
+        }
+        if (empty(self::$config['access_token']['temp_file']['filename'])) {
             throw new \Exception("Access token filename missing");
         }
         $tmpDir = rtrim(sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR;
-        return $tmpDir . self::$config['access_token_filename'];
+        return $tmpDir . self::$config['access_token']['temp_file']['filename'];
     }
 
     /**
-     * Cache the access token in the getAccessTokenFilePath() file
+     * Cache the access token
      *
      * @param array $data probably of the form [
      *          'token_type' => 'Bearer',
@@ -156,36 +158,111 @@ class AccessToken
      *          'expires_at' => 4630717897,
      *      ]
      */
-    private static function cacheAccessToken($data)
+    private static function cacheAccessToken(array $data)
     {
-        if (!@file_put_contents(self::getAccessTokenFilePath(), '<?php return ' . var_export((array)$data, true) . ';')) {
+        if ($error = self::actuallyCacheAccessToken($data)) {
 
-            call_user_func(self::$config['error_log_function'], 
-                "Error writing to file.\n" .
-                "  When attempting to cache access_token to json file.\n" .
-                "  File: '" . self::getAccessTokenFilePath() . "'\n" .
-                "  Data: '" . json_encode($data) . "'"
-            );
+            call_user_func(self::$config['error_log_function'], $error);
 
-            trigger_error(
-                "Error writing to file.\n" .
-                "  When attempting to cache access_token to json file.\n" .
-                "  File: '" . self::getAccessTokenFilePath() . "'\n" .
-                "  Data: '" . json_encode($data) . "'",
-                E_USER_NOTICE);
+            trigger_error($error, E_USER_NOTICE);
 
         }
     }
 
     /**
-     * Remove the cached OAuth token in %temp%
+     * Remove the cached OAuth Access Token
      */
     public static function clearCache()
     {
-        $cacheFile = self::getAccessTokenFilePath();
-        if (is_file($cacheFile)) {
-            unlink($cacheFile);
+        if ((self::$config['access_token']['store_as'] ?? null) === 'temp_file') {
+
+            $cacheFile = self::getAccessTokenFilePath();
+            if (is_file($cacheFile)) {
+                unlink($cacheFile);
+            }
+
+        } else if ((self::$config['access_token']['store_as'] ?? null) === 'custom') {
+
+            call_user_func(
+                self::$config['access_token']['custom']['del'],
+                self::$config['access_token']['custom']['custom_key']
+            );
+
         }
+    }
+
+    /**
+     * Get the cached access_token as an array. Null will be returned if there is no access token cached
+     *
+     * @return array|null
+     * @throws \Exception
+     */
+    private static function actuallyGetCachedAccessToken()
+    {
+
+        if ((self::$config['access_token']['store_as'] ?? null) === 'temp_file') {
+
+            if (file_exists(self::getAccessTokenFilePath())) {
+
+                // the cache file exists
+                if ($accessToken = require(self::getAccessTokenFilePath())) {
+                    return $accessToken;
+                }
+
+            }
+
+        } else if ((self::$config['access_token']['store_as'] ?? null) === 'custom') {
+
+            if ($accessToken = call_user_func(
+                self::$config['access_token']['custom']['get'],
+                self::$config['access_token']['custom']['custom_key']
+            )) {
+                if ($accessToken = @json_decode($accessToken, true)) {
+                    return $accessToken;
+                }
+            }
+
+        }
+
+        return null;
+    }
+
+    /**
+     * Cache the access token
+     *
+     * @param array $data
+     * @return string|null
+     * @throws \Exception
+     */
+    private static function actuallyCacheAccessToken(array $data): ?string
+    {
+        if ((self::$config['access_token']['store_as'] ?? null) === 'temp_file') {
+
+            if (!@file_put_contents(self::getAccessTokenFilePath(), '<?php return ' . var_export($data, true) . ';')) {
+
+                return
+                    "Error writing to file.\n" .
+                    "  When attempting to cache access_token to json file.\n" .
+                    "  File: '" . self::getAccessTokenFilePath() . "'\n" .
+                    "  Data: '" . json_encode($data) . "'";
+
+            }
+
+        } else if ((self::$config['access_token']['store_as'] ?? null) === 'custom') {
+
+            try {
+                call_user_func(
+                    self::$config['access_token']['custom']['set'],
+                    self::$config['access_token']['custom']['custom_key'],
+                    json_encode($data)
+                );
+            } catch (\Throwable $e) {
+                return $e->getMessage();
+            }
+
+        }
+
+        return null;
     }
 
 }
