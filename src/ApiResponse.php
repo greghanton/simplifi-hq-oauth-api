@@ -640,7 +640,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * which is a value of any type other than a resource.
      * @since 5.4.0
      */
-    function jsonSerialize()
+    function jsonSerialize(): mixed
     {
         return $this->serialise();
     }
@@ -651,7 +651,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @return int
      * @throws \Exception
      */
-    public function count()
+    public function count(): int
     {
         if (is_array($this->response()->data)) {
             return count($this->response()->data);
@@ -688,7 +688,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @return void Any returned value is ignored.
      * @since 5.0.0
      */
-    public function rewind()
+    public function rewind(): void
     {
         $this->iterableCheck();
         reset($this->response()->data);
@@ -700,7 +700,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @return mixed Can return any type.
      * @since 5.0.0
      */
-    public function current()
+    public function current(): mixed
     {
         $this->iterableCheck();
         return current($this->response()->data);
@@ -712,7 +712,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @return mixed scalar on success, or null on failure.
      * @since 5.0.0
      */
-    public function key()
+    public function key(): mixed
     {
         $this->iterableCheck();
         return key($this->response()->data);
@@ -724,10 +724,10 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @ return void Any returned value is ignored.
      * @since 5.0.0
      */
-    public function next()
+    public function next(): void
     {
         $this->iterableCheck();
-        return next($this->response()->data);
+        next($this->response()->data);
     }
 
     /**
@@ -737,7 +737,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * Returns true on success or false on failure.
      * @since 5.0.0
      */
-    public function valid()
+    public function valid(): bool
     {
         $this->iterableCheck();
         $key = key($this->response()->data);
