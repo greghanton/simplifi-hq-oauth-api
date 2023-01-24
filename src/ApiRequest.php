@@ -31,6 +31,11 @@ class ApiRequest
     const EVENT_BEFORE_REQUEST = 'beforeRequest';
 
     /**
+     * The after request event identifier
+     */
+    const EVENT_AFTER_REQUEST = 'afterRequest';
+
+    /**
      * An array of events added by self::addEventListener()
      * @var array
      */
@@ -167,8 +172,7 @@ class ApiRequest
         }
 
         if (!empty($config['headers'])) {
-            $configHeaders = is_string($config['headers']) ? json_decode($config['headers'], true) : $config['headers'];
-            foreach ($configHeaders as $key => $value) {
+            foreach ($config['headers'] as $key => $value) {
                 $curl->setHeader($key, $value);
             }
         }
@@ -230,8 +234,8 @@ class ApiRequest
         }
 
         // after request?
-        if (isset(self::$events['afterRequest'])) {
-            foreach (self::$events['afterRequest'] as $event) {
+        if (isset(self::$events[self::EVENT_AFTER_REQUEST])) {
+            foreach (self::$events[self::EVENT_AFTER_REQUEST] as $event) {
                 $event($return);
             }
         }
