@@ -153,6 +153,11 @@ return [
      *  • If using dotenv your .env file might look like:
      * SIMPLIFI_API_DEFAULT_HEADERS="{\"Accept\":\"application/json\",\"Content-type\":\"application/json\"}"
      */
-    'headers'                    => env('SIMPLIFI_API_DEFAULT_HEADERS'),
+    'headers'                    => !env('SIMPLIFI_API_DEFAULT_HEADERS') ?
+        [] :
+        (is_string(env('SIMPLIFI_API_DEFAULT_HEADERS')) ?
+            json_decode(env('SIMPLIFI_API_DEFAULT_HEADERS'), true) :
+            env('SIMPLIFI_API_DEFAULT_HEADERS')
+        ),
 
 ];
