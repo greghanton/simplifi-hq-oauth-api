@@ -157,8 +157,8 @@ class ApiRequest
 
         $curl = new Curl();
 
-        $curl->setTimeout(0);
-//        $curl->setTimeout($config['CURLOPT_TIMEOUT']);
+        // By default php-curl-class sets 30sec as the timeout so lets remove the timeout (0)
+        $curl->setTimeout($config['CURLOPT_TIMEOUT'] ?? 0);
 
         // TODO remove these (they are only here for testing)
         $curl->setOpt(CURLOPT_SSL_VERIFYPEER, false);
