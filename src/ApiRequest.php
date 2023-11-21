@@ -171,6 +171,10 @@ class ApiRequest
             $url = $config['url-base'] . $config['url-version'] . self::urlToString($thisOptions['url']);
         }
 
+        if ($config['add_trace_debug_header']) {
+            $thisOptions['headers']['trace-debug-header'] = ApiResponse::getCallerFromBacktrace(debug_backtrace(), __FILE__, __CLASS__)[0];
+        }
+
         if (!empty($config['headers'])) {
             foreach ($config['headers'] as $key => $value) {
                 $curl->setHeader($key, $value);

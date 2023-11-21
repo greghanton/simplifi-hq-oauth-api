@@ -281,7 +281,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
 
         $backtrace = debug_backtrace();
 
-        $caller = $this->getCallerFromBacktrace(debug_backtrace());
+        $caller = self::getCallerFromBacktrace(debug_backtrace());
 
         return [
             'method'         => $this->getMethod(),
@@ -769,7 +769,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @param $backtrace
      * @return array|null
      */
-    public function getCallerFromBacktrace($backtrace)
+    public static function getCallerFromBacktrace($backtrace, $file = __FILE__, $class = __CLASS__)
     {
 
         // NOTE: Php will not populate all elements of a frame every time
@@ -784,14 +784,14 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
         // Get the first part of the debug_backtrace outside this file
         $i = 0;
         while (
-            (isset($backtrace[$i]['file']) && $backtrace[$i]['file'] === __FILE__)
-            || (isset($backtrace[$i]['class']) && $backtrace[$i]['class'] === __CLASS__)
+            (isset($backtrace[$i]['file']) && $backtrace[$i]['file'] === $file)
+            || (isset($backtrace[$i]['class']) && $backtrace[$i]['class'] === $class)
         ) {
             $i++;
         }
 
         // if class is in previous stack then we need to minus one
-        if (isset($backtrace[$i - 1]['class']) && $backtrace[$i - 1]['class'] === __CLASS__ &&
+        if (isset($backtrace[$i - 1]['class']) && $backtrace[$i - 1]['class'] === $class &&
             isset($backtrace[$i - 1]['file']) && isset($backtrace[$i - 1]['line'])
         ) {
             $i--;
