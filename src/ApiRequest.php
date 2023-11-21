@@ -172,7 +172,9 @@ class ApiRequest
         }
 
         if ($config['add_trace_debug_header']) {
-            $thisOptions['headers']['trace-debug-header'] = ApiResponse::getCallerFromBacktrace(debug_backtrace(), __FILE__, __CLASS__)[0];
+            if ($debugHeader = (ApiResponse::getCallerFromBacktrace(debug_backtrace(), __FILE__, __CLASS__)[0] ?? null)) {
+                $thisOptions['headers']['trace-debug-header'] = $debugHeader;
+            }
         }
 
         if (!empty($config['headers'])) {
