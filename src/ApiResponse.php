@@ -133,7 +133,9 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
         }
         if (count($errors) === 0 && $this->curl->error) {
             $errors[] = [
-                'title' => $this->curl->errorCode . ': ' . $this->curl->errorMessage,
+                'title' => $this->curl->errorCode . ': ' . $this->curl->errorMessage . " " .
+                    (substr(json_encode($this->serialise()['response'] ?? ''), 0, 300))
+                ,
             ];
         }
         return $errors;
