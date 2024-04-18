@@ -14,13 +14,13 @@ return [
 
 
     /**
-     * Client id for OAuth API 
+     * Client id for OAuth API
      */
     'client_id'                  => env('SIMPLIFI_API_CLIENT_ID'),
 
 
     /**
-     * Client secret for OAuth API 
+     * Client secret for OAuth API
      */
     'client_secret'              => env('SIMPLIFI_API_CLIENT_SECRET'),
 
@@ -32,7 +32,7 @@ return [
 
 
     /**
-     * Password for OAuth API 
+     * Password for OAuth API
      */
     'password'                   => env('SIMPLIFI_API_PASSWORD'),
 
@@ -89,8 +89,10 @@ return [
              * This is the file name in the server temporary directory sys_get_temp_dir()
              * e.g. "simplifi-hq-oauth-api-access-token.php" might cause the access_token to be stored at:
              * "/tmp/simplifi-hq-oauth-api-access-token.php"
+             * By default: md5(__DIR__) this means the file will be unique to the directory the config file is in.
+             * Which means you can have multiple projects on the same server and not have a collision.
              */
-            'filename' => env('SIMPLIFI_API_ACCESS_TOKEN_TEMP_FILE_FILENAME', 'simplifi-hq-oauth-api-access-token.php'),
+            'filename' => env('SIMPLIFI_API_ACCESS_TOKEN_TEMP_FILE_FILENAME', md5(__DIR__) . '-access-token.php'),
         ],
 
         /**
@@ -166,5 +168,5 @@ return [
      */
     'add_trace_debug_header'     => !!env('SIMPLIFI_API_ADD_TRACE_DEBUG_HEADER'),
 
-    
+
 ];

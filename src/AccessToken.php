@@ -13,10 +13,9 @@ class AccessToken
 {
 
     /**
-     * @var array
      * @see ApiRequest::$config
      */
-    private static $config;
+    private static array $config;
 
     /**
      * Get access token.
@@ -31,7 +30,7 @@ class AccessToken
      * @throws \Exception
      * @see ApiRequest::$config
      */
-    public static function getAccessToken($config)
+    public static function getAccessToken(array $config): ApiResponse|string
     {
         self::$config = $config;
 
@@ -52,7 +51,7 @@ class AccessToken
      *      String: access_token.
      *      NULL: we could not get an access token
      */
-    private static function getCachedAccessToken()
+    private static function getCachedAccessToken(): ?string
     {
         if ($accessToken = self::actuallyGetCachedAccessToken()) {
 
@@ -80,7 +79,7 @@ class AccessToken
      *          the failed request to generate one
      * @throws \Exception
      */
-    private static function generateNewAccessToken($andCache = false)
+    private static function generateNewAccessToken(bool $andCache = false): ApiResponse|string
     {
         $apiResponse = ApiRequest::request([
             'method'            => 'POST',
@@ -134,7 +133,7 @@ class AccessToken
      * @return string e.g. 'G:/Windows/Temp/ua-access-token.php'
      * @throws \Exception
      */
-    private static function getAccessTokenFilePath()
+    private static function getAccessTokenFilePath(): string
     {
         if ((self::$config['access_token']['store_as'] ?? null) !== 'temp_file') {
             // This indicates ta coding error.
@@ -158,7 +157,7 @@ class AccessToken
      *          'expires_at' => 4630717897,
      *      ]
      */
-    private static function cacheAccessToken(array $data)
+    private static function cacheAccessToken(array $data): void
     {
         if ($error = self::actuallyCacheAccessToken($data)) {
 
@@ -172,7 +171,7 @@ class AccessToken
     /**
      * Remove the cached OAuth Access Token
      */
-    public static function clearCache()
+    public static function clearCache(): void
     {
         if ((self::$config['access_token']['store_as'] ?? null) === 'temp_file') {
 
@@ -197,7 +196,7 @@ class AccessToken
      * @return array|null
      * @throws \Exception
      */
-    private static function actuallyGetCachedAccessToken()
+    private static function actuallyGetCachedAccessToken(): ?array
     {
 
         if ((self::$config['access_token']['store_as'] ?? null) === 'temp_file') {
@@ -265,7 +264,7 @@ class AccessToken
         return null;
     }
 
-    public static function getCallableLogFunction()
+    public static function getCallableLogFunction(): \callable
     {
         $setting = self::$config['error_log_function'];
         if (is_string($setting)) {

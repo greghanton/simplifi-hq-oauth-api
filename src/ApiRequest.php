@@ -37,21 +37,18 @@ class ApiRequest
 
     /**
      * An array of events added by self::addEventListener()
-     * @var array
      */
-    private static $events = [];
+    private static array $events = [];
 
     /**
      * This will hold the contents of CONFIG_FILE in an array for quick access
-     * @var null
      */
-    private static $config = null;
+    private static array $config = [];
 
     /**
      * These are the default request options. Each can be overridden by the $options parameter in the request method
-     * @var array
      */
-    private static $defaultRequestOptions = [
+    private static array $defaultRequestOptions = [
 
         /**
          * Request method
@@ -121,13 +118,14 @@ class ApiRequest
      * @param array $options check $defaultRequestOptions for a list of available options
      * @param array $overrideConfig This will override options in the config.php file if you want
      *      This will almost never by passed in
-     * @param float leave this blank it is an internal variable
+     * @param ?float $timerStart leave this blank it is an internal variable
+     *
      * @return ApiResponse result from the request i.e. check ApiResponse::success() to see if it was successful
-     * @throws \Exception if URL not specified
+     * @throws \Exception if URL isn't specified
      * @see $defaultRequestOptions
      * @see ApiResponse::success()
      */
-    public static function request($options, $overrideConfig = [], $timerStart = null)
+    public static function request(array $options, array $overrideConfig = [], ?float $timerStart = null): ApiResponse
     {
         $config = self::getConfig($overrideConfig);
 
@@ -157,7 +155,7 @@ class ApiRequest
 
         $curl = new Curl();
 
-        // By default php-curl-class sets 30sec as the timeout so lets remove the timeout (0)
+        // By default, php-curl-class sets 30sec as the timeout, so let's remove the timeout (0)
         $curl->setTimeout($config['CURLOPT_TIMEOUT'] ?? 0);
 
         // TODO remove these (they are only here for testing)
@@ -252,19 +250,10 @@ class ApiRequest
 
     /**
      * Usually just the same as "new ApiResponse($config, $curl, $thisOptions);"
-     * However; if the the response is {"type":"AuthenticationException","error":"Unauthenticated."}
+     * However, if the response is {"type":"AuthenticationException","error":"Unauthenticated."}
      * We should delete the cached access token and try the request again
-     *
-     * @param $config
-     * @param $curl
-     * @param $thisOptions
-     * @param $options
-     * @param $overrideConfig
-     * @param $timerStart float start time of the request
-     * @return ApiResponse
-     * @throws \Exception
      */
-    private static function createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig, $timerStart)
+    private static function createApiResponse(array $config, Curl $curl, array $thisOptions, array $options, array $overrideConfig, float $timerStart): ApiResponse
     {
         if ($thisOptions['retry-on-authentication-exception'] && self::responseIsAuthenticationException($curl)) {
             AccessToken::clearCache();
@@ -278,11 +267,8 @@ class ApiRequest
 
     /**
      * Returns true if response is {"type":"AuthenticationException","error":"Unauthenticated."}
-     *
-     * @param $curl
-     * @return boolean
      */
-    private static function responseIsAuthenticationException($curl)
+    private static function responseIsAuthenticationException(Curl $curl): bool
     {
         return isset($curl->response->type) && $curl->response->type === 'AuthenticationException';
     }
@@ -291,11 +277,10 @@ class ApiRequest
      * Grab the config out of the config.php file and store it in $config field
      *
      * @param array $overrideConfig if you want to override any values in the config.php file.
-     *      This wont usually be passed in
-     * @return mixed|null
+     *      This won't usually be passed in
      * @see $config
      */
-    private static function getConfig($overrideConfig = [])
+    private static function getConfig(array $overrideConfig = []): array
     {
         if (!self::$config) {
             self::$config = require(self::CONFIG_FILE);
@@ -312,7 +297,7 @@ class ApiRequest
      * @return ApiResponse|string string: success. ApiResponse: failed
      * @see AccessToken::getAccessToken()
      */
-    public static function getAccessToken()
+    public static function getAccessToken(): ApiResponse|string
     {
         return AccessToken::getAccessToken(self::getConfig());
     }
@@ -323,7 +308,7 @@ class ApiRequest
      * @param $event string e.g. "beforeRequest"
      * @param $callback \callable function to be called
      */
-    public static function addEventListener($event, $callback)
+    public static function addEventListener(string $event, callable $callback): void
     {
         self::$events[$event][] = $callback;
     }
@@ -335,7 +320,7 @@ class ApiRequest
      * @return string e.g.
      *      "Simplifi-HQ-API/1.0.0 (+https://github.com/greghanton/simplifi-hq-oauth-api) PHP-Curl-Class/8.8.0 curl/7.58.0 PHP/7.4.5"
      */
-    private static function getDefaultUserAgent($urlVersion)
+    private static function getDefaultUserAgent(string $urlVersion): string
     {
         $user_agent = 'Simplifi-HQ-API/' . $urlVersion . ' (+https://github.com/greghanton/simplifi-hq-oauth-api)';
         $user_agent .= ' PHP-Curl-Class/' . Curl::VERSION;
@@ -347,12 +332,12 @@ class ApiRequest
     /**
      * Get the url as a string
      *
-     * @param string|array $url EG:
+     * @param array|string $url EG:
      *      - "sales/102/invoice"
      *      - OR ["sales/$/invoice", 102]
-     * @return void
+     * @return string
      */
-    private static function urlToString($url)
+    private static function urlToString(array|string $url): string
     {
         if (is_string($url)) {
             return ltrim($url, '/\\');
@@ -381,7 +366,7 @@ class ApiRequest
      * @param array $replacments EG [102]
      * @return string EG "sales/102/invoice"
      */
-    private static function substituteStringReplacements($string, $replacments)
+    private static function substituteStringReplacements(string $string, array $replacments): string
     {
 
         // Split the string into parts

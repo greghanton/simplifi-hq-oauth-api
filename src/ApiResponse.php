@@ -3,6 +3,7 @@
 namespace SimplifiApi;
 
 use Curl\Curl;
+use JetBrains\PhpStorm\NoReturn;
 
 /**
  * Class ApiResponse
@@ -15,30 +16,11 @@ use Curl\Curl;
 class ApiResponse implements \JsonSerializable, \Iterator, \Countable
 {
 
-    /**
-     * @var Curl
-     */
-    private $curl;
-
-    /**
-     * @var array
-     */
-    private $config;
-
-    /**
-     * @var boolean
-     */
-    private $forceSuccess = null;
-
-    /**
-     * @var array
-     */
-    private $requestOptions;
-
-    /**
-     * @var float
-     */
-    private $requestTime;
+    private Curl $curl;
+    private array $config;
+    private ?bool $forceSuccess = null;
+    private array $requestOptions;
+    private float $requestTime;
 
     /**
      * The response created event identifier
@@ -47,20 +29,19 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
 
     /**
      * An array of events added by self::addEventListener()
-     * @var array
      */
-    private static $events = [];
+    private static array $events = [];
 
     /**
      * ApiResponse constructor.
      *
-     * @param array $config This is the config array from the ../config.php file (sometimes some values will be
-     *      overridden by the user but usually it is exactly the array from the file)
+     * @param array $config This is the config array from the config.php file (sometimes some values will be
+     *      overridden by the user, but usually it is exactly the array from the file
      * @param $curl Curl instance of the php-curl-class/php-curl-class library Curl class
      * @param array $requestOptions this contains the request method, URL etc @see ApiRequest::$defaultRequestOptions
      * @param $timerStart float the time that the curl request was initiated
      */
-    public function __construct($config, Curl $curl, $requestOptions, $timerStart)
+    public function __construct(array $config, Curl $curl, array $requestOptions, float $timerStart)
     {
         $this->curl = $curl;
         $this->config = $config;
@@ -87,39 +68,35 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * Check if there was an error with the request e.g. a 404 occurred
      * Will return true if HTTP response code is not in 4xx or 5xx AND there was no curl_errno() e.g. 404
      *
-     * NOTE: The Uber Accounting API is setup so that if an errors occur it will return a status code of not 200
+     * NOTE: The Uber Accounting API is set up so that if an errors occur, it will return a status code of not 200
      *      and will set the "errors" array element
-     *
-     * @return bool
      */
-    public function success()
+    public function success(): bool
     {
         if ($this->forceSuccess !== null) {
             return $this->forceSuccess;
         } else {
-            return $this->curl->error ? false : true;
+            return !$this->curl->error;
         }
     }
 
     /**
      * Get the raw response (e.g. if 'Content-Type:application/json' then a json_decode() result is returned)
-     *
-     * @return mixed
      */
-    public function response()
+    public function response(): mixed
     {
         return $this->curl->response;
     }
 
     /**
-     * Return an array of errors that occurred (may be blank if no errors occurred)
+     * Return an array of errors that occurred OR empty array if no errors occurred.
      * The end point may return an array of errors if it finds an error
      * Or if there was an HTTP error then return that
      *
-     * @return array of errors (may be blank) array elements are of the form:
+     * @return array of errors (empty if not errors occurred) array elements are of the form:
      *      ['title'=>'string message (always present)', 'message'=>'detailed description (may not be set)']
      */
-    public function errors()
+    public function errors(): array
     {
         $errors = [];
         if (array_key_exists('errors', (array)$this->response())) {
@@ -144,15 +121,13 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     /**
      * Return $this->getSimpleErrorsArray() as an imploded string
      *
-     * @param string $glue
-     * @return string
      * @see getSimpleErrorsArray()
      */
-    public function errorsToString($glue = ", ", $escape = false)
+    public function errorsToString(string $glue = ", ", bool $escape = false): string
     {
         $errors = $this->getSimpleErrorsArray();
         if ($escape) {
-            array_walk($errors, fn($value) => htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8', $doubleEncode));
+            array_walk($errors, fn($value) => htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8'));
         }
         return implode($glue, $errors);
     }
@@ -163,7 +138,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @return string[] an array of strings
      * @see errors()
      */
-    public function getSimpleErrorsArray()
+    public function getSimpleErrorsArray(): array
     {
         $errors = $this->errors();
         $response = [];
@@ -185,7 +160,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @param $message string Message to throw
      * @throws \Exception
      */
-    public function throwException($message)
+    public function throwException(string $message): void
     {
         if ($this->config['APP_ENV'] === 'local') {
             $this->dd();
@@ -219,10 +194,9 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     /**
      * Return the Curl object
      *
-     * @return Curl
      * @see curl
      */
-    public function getCurl()
+    public function getCurl(): Curl
     {
         return $this->curl;
     }
@@ -231,10 +205,9 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * Just like php's native curl_getinfo()
      *
      * @param int $opt see http://php.net/manual/en/function.curl-getinfo.php
-     * @return mixed
      * @see http://php.net/manual/en/function.curl-getinfo.php
      */
-    public function getCurlInfo($opt)
+    public function getCurlInfo(int $opt): mixed
     {
         return $this->curl->getInfo($opt);
     }
@@ -242,10 +215,8 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     /**
      * Get the full URL of the request
      * useful for debugging
-     *
-     * @return string
      */
-    public function getRequestUrl()
+    public function getRequestUrl(): mixed
     {
         return $this->getCurlInfo(CURLINFO_EFFECTIVE_URL);
     }
@@ -255,17 +226,15 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      *
      * @return integer
      */
-    public function getHttpCode()
+    public function getHttpCode(): mixed
     {
         return $this->getCurlInfo(CURLINFO_HTTP_CODE);
     }
 
     /**
-     * Get the http request method used e.g. 'POST'
-     *
-     * @return string
+     * Get the http request method used, e.g. 'POST'
      */
-    public function getMethod()
+    public function getMethod(): string
     {
         return $this->requestOptions['method'];
     }
@@ -277,15 +246,13 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @param $anonymise boolean Remove sensitive info from the result
      * @return array
      */
-    public function serialise($anonymise = true)
+    public function serialise(bool $anonymise = true): array
     {
         $response = $this->response();
 
-        $backtrace = debug_backtrace();
-
         $caller = self::getCallerFromBacktrace(debug_backtrace());
 
-        return [
+        $return = [
             'method'         => $this->getMethod(),
             'http-code'      => $this->getHttpCode(),
             'url'            => $this->getRequestUrl(),
@@ -294,6 +261,17 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
             'response'       => $this->isJson($response) ? json_decode($response) : $response,
             'caller'         => $caller ?: null,
         ];
+
+        if ($anonymise) {
+            // Recursively walk the array and any key that contains 'token','pass','secret' will be replaced with '### REDACTED ###'
+            array_walk_recursive($return, function (&$v, $k) {
+                if (is_string($v) && preg_match('/token|pass|secret/i', $k)) {
+                    $v = '### REDACTED ###';
+                }
+            });
+        }
+
+        return $return;
     }
 
     /**
@@ -301,7 +279,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      *
      * @param boolean $success
      */
-    public function setSuccess($success)
+    public function setSuccess(bool $success): void
     {
         $this->forceSuccess = $success;
     }
@@ -310,17 +288,16 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @param Curl $curl
      * @see $curl
      */
-    public function setCurl($curl)
+    public function setCurl(Curl $curl): void
     {
         $this->curl = $curl;
     }
 
     /**
      * @param $anonymise boolean Remove sensitive info from the result
-     * @return array
      * @see requestOptions
      */
-    public function getRequestOptions($anonymise = true)
+    public function getRequestOptions(bool $anonymise = true): array
     {
         $options = $this->requestOptions;
 
@@ -340,7 +317,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @param array $options
      * @see requestOptions
      */
-    public function setRequestOptions($options)
+    public function setRequestOptions(array $options): void
     {
         $this->requestOptions = $options;
     }
@@ -383,10 +360,10 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * This should only be used for paginated results.
      * Returns FALSE if request is not paginated or there are no more pages
      *
-     * @return bool|ApiResponse TRUE: If there in another page and it was successfully received.
+     * @return bool|ApiResponse FALSE: If there are no more pages.
      * @throws \Exception
      */
-    public function nextPage()
+    public function nextPage(): ApiResponse|false
     {
         if ($this->hasNextPage()) {
             // modify the request so it will get the next page
@@ -408,10 +385,8 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     /**
      * Does this request have another page?
      * Should only be called on paginated endpoint responses
-     *
-     * @return bool
      */
-    private function hasNextPage()
+    private function hasNextPage(): bool
     {
         return $this->property('paginator') && $this->property('paginator', 'current_page') < $this->property('paginator', 'total_pages');
     }
@@ -435,10 +410,8 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      *     }
      *
      * }
-     *
-     * @return array
      */
-    protected function fetchAllPageData()
+    protected function fetchAllPageData(): array
     {
 
         $tempResponse = $this;
@@ -460,11 +433,9 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * This will do as many requests as required to fetch every page's items into a single array and return that array
      * This function is the same as $this->fetchAllPageData() with a little additional error checking
      *
-     * @return array
-     * @throws \Exception
      * @see fetchAllPageData
      */
-    public function allPages()
+    public function allPages(): array
     {
 
         if ($this->success()) {
@@ -484,10 +455,9 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * Get the current page number
      * Should only be called on paginated endpoint responses
      *
-     * @return string|int
-     * @throws \Exception when attempting to get the page number of a non paginated response
+     * @throws \Exception when attempting to get the page number of a non-paginated response
      */
-    private function getCurrentPage()
+    private function getCurrentPage(): int|string
     {
         if (!$this->paginator) {
             throw new \Exception("Attempted to get the page number for a non paginated response.");
@@ -504,7 +474,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @return mixed NULL: if the property could not be found
      * @see __get()
      */
-    private function property()
+    private function property(): mixed
     {
         $args = func_get_args();
         $response = $this->response();
@@ -534,7 +504,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @param string $functionName
      * @param array $functionArgs func_get_args()
      */
-    private function triggerError($message, $debugBackTrace, $class, $functionName, $functionArgs)
+    private function triggerError(string $message, array $debugBackTrace, string $class, string $functionName, array $functionArgs): void
     {
 
         $externalTraceId = 0;
@@ -578,7 +548,8 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      *
      * @see serialise()
      */
-    public function dd($prettyHtml = true, $addAdditionalDataToHtml = true)
+    #[NoReturn]
+    public function dd($prettyHtml = true, $addAdditionalDataToHtml = true): void
     {
         // If error is html just output the html because chances are its a nicly formatted laravel exception
         if ($prettyHtml) {
@@ -607,10 +578,10 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     /**
      * Check if string is valid JSON
      *
-     * @param string $string string that we want to check if it is JSON format or not
+     * @param mixed $string string that we want to check if it is JSON format or not
      * @return bool true if the $string passed in is JSON
      */
-    private function isJson($string)
+    private function isJson(mixed $string): bool
     {
         if (!is_string($string)) {
             return false;
@@ -623,7 +594,6 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
     /**
      * Magic method called by var_dump() on this object
      *
-     * @return array
      * @link http://php.net/manual/en/language.oop5.magic.php#object.debuginfo
      */
     public function __debugInfo()
@@ -748,7 +718,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
 
     /**************** END Iterator methods ****************/
 
-    private function logRequest($message)
+    private function logRequest($message): void
     {
         $serialisedRequest = $this->serialise();
 
@@ -767,11 +737,8 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
 
     /**
      * Get the first frame of a back trace outside this file
-     *
-     * @param $backtrace
-     * @return array|null
      */
-    public static function getCallerFromBacktrace($backtrace, $file = __FILE__, $class = __CLASS__)
+    public static function getCallerFromBacktrace(array $backtrace, string $file = __FILE__, string $class = __CLASS__): ?array
     {
 
         // NOTE: Php will not populate all elements of a frame every time
@@ -852,7 +819,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @param \Closure $callback function to be called
      * @return void
      */
-    public static function addEventListener(string $eventName, \Closure $callback)
+    public static function addEventListener(string $eventName, \Closure $callback): void
     {
         self::$events[$eventName][] = $callback;
     }
@@ -863,7 +830,7 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
      * @param string $eventName The event identifier to trigger
      * @param array $callbackParameters The parameters to send to the callback
      */
-    public static function fireEvent(string $eventName, array $callbackParameters)
+    public static function fireEvent(string $eventName, array $callbackParameters): void
     {
         if (isset(self::$events[$eventName])) {
             foreach (self::$events[$eventName] as $event) {
