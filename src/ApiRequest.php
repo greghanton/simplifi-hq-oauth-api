@@ -326,6 +326,7 @@ class ApiRequest
         $user_agent .= ' PHP-Curl-Class/' . Curl::VERSION;
         $user_agent .= ' curl/' . (curl_version()['version']);
         $user_agent .= ' PHP/' . PHP_VERSION;
+        $user_agent .= ($_SERVER['SERVER_NAME'] ?? null) ? ' Domain/' . $_SERVER['SERVER_NAME'] : '';
         return $user_agent;
     }
 
