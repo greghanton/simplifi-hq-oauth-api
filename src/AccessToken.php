@@ -264,7 +264,7 @@ class AccessToken
         return null;
     }
 
-    public static function getCallableLogFunction(): \callable
+    public static function getCallableLogFunction(): callable
     {
         $setting = self::$config['error_log_function'];
         if (is_string($setting)) {

@@ -306,7 +306,7 @@ class ApiRequest
      * Add an event listener
      *
      * @param $event string e.g. "beforeRequest"
-     * @param $callback \callable function to be called
+     * @param $callback callable function to be called
      */
     public static function addEventListener(string $event, callable $callback): void
     {
