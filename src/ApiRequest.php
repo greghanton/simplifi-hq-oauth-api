@@ -270,7 +270,8 @@ class ApiRequest
      */
     private static function responseIsAuthenticationException(Curl $curl): bool
     {
-        return isset($curl->response->type) && $curl->response->type === 'AuthenticationException';
+        return isset($curl->response->type) && $curl->response->type === 'AuthenticationException' ||
+            isset($curl->response->message) && $curl->response->message === "Unauthenticated.";
     }
 
     /**
