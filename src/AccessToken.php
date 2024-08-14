@@ -183,7 +183,7 @@ class AccessToken
         } else if ((self::$config['access_token']['store_as'] ?? null) === 'custom') {
 
             call_user_func(
-                json_decode(self::$config['access_token']['custom']['del'], true),
+                self::toCallable(self::$config['access_token']['custom']['del']),
                 self::$config['access_token']['custom']['custom_key']
             );
 
@@ -213,7 +213,7 @@ class AccessToken
         } else if ((self::$config['access_token']['store_as'] ?? null) === 'custom') {
 
             if ($accessToken = call_user_func(
-                json_decode(self::$config['access_token']['custom']['get'], true),
+                self::toCallable(self::$config['access_token']['custom']['get']),
                 self::$config['access_token']['custom']['custom_key']
             )) {
                 if ($accessToken = @json_decode($accessToken, true)) {
@@ -251,7 +251,7 @@ class AccessToken
 
             try {
                 call_user_func(
-                    json_decode(self::$config['access_token']['custom']['set'], true),
+                    self::toCallable(self::$config['access_token']['custom']['set']),
                     self::$config['access_token']['custom']['custom_key'],
                     json_encode($data)
                 );
@@ -271,6 +271,14 @@ class AccessToken
             $setting = json_decode($setting, true);
         }
         return $setting;
+    }
+
+    private static function toCallable(mixed $callable): callable
+    {
+        if (is_string($callable)) {
+            $callable = json_decode($callable, true);
+        }
+        return $callable;
     }
 
 }
