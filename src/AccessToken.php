@@ -85,8 +85,8 @@ class AccessToken
             'method'            => 'POST',
             'url-absolute'      => 'oauth/token',
             'with-access-token' => false,
-            'data'              => [
-                'grant_type'    => 'password',
+            'data'              => array_filter([
+                'grant_type'    => self::$config['grant_type'],
                 'client_id'     => self::$config['client_id'],
                 'client_secret' => self::$config['client_secret'],
                 'username'      => self::$config['username'],
@@ -96,8 +96,9 @@ class AccessToken
                 //'grant_type'    => 'client_credentials',
                 //'client_id'     => self::$config['client_id'],
                 //'client_secret' => self::$config['client_secret'],
-            ],
+            ]),
         ]);
+//        $apiResponse->dd();
         if ($apiResponse->success()) {
 
             $data = $apiResponse->response();
