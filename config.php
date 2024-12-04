@@ -14,8 +14,9 @@ return [
 
 
     /**
-     * Either "password"(depricated) or "client_credentials"
-     * Default to "password" for backwards compatibility. Even though client_credentials is the recommended method.
+     * Either "client_credentials" or "password" ("password" is deprecated).
+     * Default to "password" for backwards compatibility.
+     * Even though client_credentials is the recommended method.
      */
     'grant_type'                 => env('SIMPLIFI_API_GRANT_TYPE', 'password'),
 
