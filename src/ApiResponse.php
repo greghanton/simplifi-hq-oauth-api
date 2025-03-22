@@ -750,66 +750,105 @@ class ApiResponse implements \JsonSerializable, \Iterator, \Countable
             return null;
         }
 
-        // Get the first part of the debug_backtrace outside this file
-        $i = 0;
-        while (
-            (isset($backtrace[$i]['file']) && $backtrace[$i]['file'] === $file)
-            || (isset($backtrace[$i]['class']) && $backtrace[$i]['class'] === $class)
-        ) {
-            $i++;
+        // Filter out all frame that are in the vendor directory
+        $filteredBacktrace = array_filter($backtrace, function ($frame) use ($class, $file) {
+            return !isset($frame['file']) ||
+                (
+                    !str_contains($frame['file'], 'vendor') &&
+                    !str_contains($frame['file'], 'Middleware') &&
+                    !str_ends_with($frame['file'], '/public/index.php') &&
+                    !str_contains($frame['file'], $file) &&
+                    !str_contains($frame['class'] ?? '', $class)
+                );
+        });
+        if (count($filteredBacktrace) > 0) {
+            $backtrace = $filteredBacktrace;
         }
 
-        // if class is in previous stack then we need to minus one
-        if (isset($backtrace[$i - 1]['class']) && $backtrace[$i - 1]['class'] === $class &&
-            isset($backtrace[$i - 1]['file']) && isset($backtrace[$i - 1]['line'])
-        ) {
-            $i--;
-        }
+        // Transform the backtrace into a string
+        $arrayBacktrace = array_map(function ($frame) {
+            if (isset($frame['file']) && isset($frame['line'])) {
 
-        if ($i >= count($backtrace)) {
-            // No part of the debug_backtrace is outside this file
-            // So just grab the first frame
-            $i = 0;
-        }
+                // Remove the document root from the url as it's unnecessary
+                $file = isset($_SERVER['DOCUMENT_ROOT']) ?
+                    preg_replace("/^" . preg_quote(realpath($_SERVER['DOCUMENT_ROOT'] . "/.."), '/') . "/", '', $frame['file']) :
+                    $frame['file'];
 
-        if ($i < 0) {
-            $i = 0;
-        }
-
-        $stacks = [];
-
-        // Grab the 3 closest stacks
-        for ($j = $i; $j < $i + 3; $j++) {
-
-            if (isset($backtrace[$j])) {
-
-                $stack = $backtrace[$j];
-
-                if (isset($stack['file']) && isset($stack['line'])) {
-
-                    // Remove the document root from the url as it's unnecessary
-                    $file = isset($_SERVER['DOCUMENT_ROOT']) ?
-                        preg_replace("/^" . preg_quote(realpath($_SERVER['DOCUMENT_ROOT'] . "/.."), '/') . "/", '', $stack['file']) :
-                        $stack['file'];
-
-                    $stacks[] = $file . '::' . $stack['line'];
-                } elseif (isset($stack['class']) && isset($stack['function'])) {
-                    $stacks[] = $stack['class'] .
-                        (!empty($stack['type']) ? $stack['type'] : '::') .
-                        $stack['function'];
-                } else {
-                    $stacks[] = null;
-                }
-
+                return $file . '::' . $frame['line'];
+            } elseif (isset($frame['class']) && isset($frame['function'])) {
+                return $frame['class'] .
+                    (!empty($frame['type']) ? $frame['type'] : '::') .
+                    $frame['function'];
+            } else {
+                return null;
             }
+        }, $backtrace);
 
-        }
+        $arrayBacktrace = array_filter($arrayBacktrace);
 
-        if ($stacks) {
-            return $stacks;
-        }
+        // Only keep the first three stacks
+        return array_slice($arrayBacktrace, 0, 3);
 
-        return null;
+        // Get the first part of the debug_backtrace outside this file
+//        $i = 0;
+//        while (
+//            (isset($backtrace[$i]['file']) && $backtrace[$i]['file'] === $file)
+//            || (isset($backtrace[$i]['class']) && $backtrace[$i]['class'] === $class)
+//        ) {
+//            $i++;
+//        }
+//
+//        // if class is in previous stack then we need to minus one
+//        if (isset($backtrace[$i - 1]['class']) && $backtrace[$i - 1]['class'] === $class &&
+//            isset($backtrace[$i - 1]['file']) && isset($backtrace[$i - 1]['line'])
+//        ) {
+//            $i--;
+//        }
+//
+//        if ($i >= count($backtrace)) {
+//            // No part of the debug_backtrace is outside this file
+//            // So just grab the first frame
+//            $i = 0;
+//        }
+//
+//        if ($i < 0) {
+//            $i = 0;
+//        }
+//
+//        $stacks = [];
+//
+//        // Grab the 3 closest stacks
+//        for ($j = $i; $j < $i + 3; $j++) {
+//
+//            if (isset($backtrace[$j])) {
+//
+//                $stack = $backtrace[$j];
+//
+//                if (isset($stack['file']) && isset($stack['line'])) {
+//
+//                    // Remove the document root from the url as it's unnecessary
+//                    $file = isset($_SERVER['DOCUMENT_ROOT']) ?
+//                        preg_replace("/^" . preg_quote(realpath($_SERVER['DOCUMENT_ROOT'] . "/.."), '/') . "/", '', $stack['file']) :
+//                        $stack['file'];
+//
+//                    $stacks[] = $file . '::' . $stack['line'];
+//                } elseif (isset($stack['class']) && isset($stack['function'])) {
+//                    $stacks[] = $stack['class'] .
+//                        (!empty($stack['type']) ? $stack['type'] : '::') .
+//                        $stack['function'];
+//                } else {
+//                    $stacks[] = null;
+//                }
+//
+//            }
+//
+//        }
+//
+//        if ($stacks) {
+//            return $stacks;
+//        }
+//
+//        return null;
     }
 
     /**
