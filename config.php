@@ -1,4 +1,5 @@
 <?php
+
 return (function() {
 
     $VERSION = '1.0.1';
@@ -14,7 +15,7 @@ return (function() {
         /**
          * The environment e.g. "local" / "staging" / "production"
          */
-        'APP_ENV'                    => env('APP_ENV'),
+        'APP_ENV'                    => simplifiHqOauthApiLibEnv('APP_ENV'),
 
 
         /**
@@ -22,43 +23,43 @@ return (function() {
          * Default to "password" for backwards compatibility.
          * Even though client_credentials is the recommended method.
          */
-        'grant_type'                 => env('SIMPLIFI_API_GRANT_TYPE', 'password'),
+        'grant_type'                 => simplifiHqOauthApiLibEnv('SIMPLIFI_API_GRANT_TYPE', 'password'),
 
 
         /**
          * Client id for OAuth API
          */
-        'client_id'                  => env('SIMPLIFI_API_CLIENT_ID'),
+        'client_id'                  => simplifiHqOauthApiLibEnv('SIMPLIFI_API_CLIENT_ID'),
 
 
         /**
          * Client secret for OAuth API
          */
-        'client_secret'              => env('SIMPLIFI_API_CLIENT_SECRET'),
+        'client_secret'              => simplifiHqOauthApiLibEnv('SIMPLIFI_API_CLIENT_SECRET'),
 
 
         /**
          * Username for OAuth API  (probably an email)
          */
-        'username'                   => env('SIMPLIFI_API_USERNAME'),
+        'username'                   => simplifiHqOauthApiLibEnv('SIMPLIFI_API_USERNAME'),
 
 
         /**
          * Password for OAuth API
          */
-        'password'                   => env('SIMPLIFI_API_PASSWORD'),
+        'password'                   => simplifiHqOauthApiLibEnv('SIMPLIFI_API_PASSWORD'),
 
 
         /**
          * Scope to request
          */
-        'scope'                      => env('SIMPLIFI_API_SCOPE', '*'),
+        'scope'                      => simplifiHqOauthApiLibEnv('SIMPLIFI_API_SCOPE', '*'),
 
 
         /**
          * URL base EG 'https://api.simplifi.com/'
          */
-        'url-base'                   => env('SIMPLIFI_API_URL_BASE'),
+        'url-base'                   => simplifiHqOauthApiLibEnv('SIMPLIFI_API_URL_BASE'),
 
 
         /**
@@ -88,7 +89,7 @@ return (function() {
              * (DEFAULT) if 'store_as'='temp_file' then 'temp_file'.'filename' is REQUIRED
              * if 'store_as'='custom' then 'custom'.* are all REQUIRED
              */
-            'store_as'  => env('SIMPLIFI_API_ACCESS_TOKEN_STORE_AS', 'temp_file'),
+            'store_as'  => simplifiHqOauthApiLibEnv('SIMPLIFI_API_ACCESS_TOKEN_STORE_AS', 'temp_file'),
 
             /**
              * 'store_as'='temp_file' Is the easiest method, you just need to make sure php has permission to the systems temp directory.
@@ -104,7 +105,7 @@ return (function() {
                  * By default: md5(__DIR__) this means the file will be unique to the directory the config file is in.
                  * Which means you can have multiple projects on the same server and not have a collision.
                  */
-                'filename' => env('SIMPLIFI_API_ACCESS_TOKEN_TEMP_FILE_FILENAME', md5(__DIR__) . "-" . str_replace('.', '-', $VERSION) . "-access-token.php"),
+                'filename' => simplifiHqOauthApiLibEnv('SIMPLIFI_API_ACCESS_TOKEN_TEMP_FILE_FILENAME', md5(__DIR__) . "-" . str_replace('.', '-', $VERSION) . "-access-token.php"),
             ],
 
             /**
@@ -125,25 +126,25 @@ return (function() {
                  * This will be passed as the first parameter to 'get', 'set' and 'del'
                  * If using Redis this would be the key in redis
                  */
-                'custom_key' => env('SIMPLIFI_API_ACCESS_TOKEN_CUSTOM_KEY', 'simplifi-hq-oauth-api-access-token'),
+                'custom_key' => simplifiHqOauthApiLibEnv('SIMPLIFI_API_ACCESS_TOKEN_CUSTOM_KEY', 'simplifi-hq-oauth-api-access-token'),
 
                 /**
                  * Callable
                  * 'get' will be passed one parameter (<custom_key>)
                  */
-                'get'        => env('SIMPLIFI_API_ACCESS_TOKEN_GET'),
+                'get'        => simplifiHqOauthApiLibEnv('SIMPLIFI_API_ACCESS_TOKEN_GET'),
 
                 /**
                  * Callable
                  * 'set' will be passed two parameter (<custom_key>, <Access Token Data as a string>)
                  */
-                'set'        => env('SIMPLIFI_API_ACCESS_TOKEN_SET'),
+                'set'        => simplifiHqOauthApiLibEnv('SIMPLIFI_API_ACCESS_TOKEN_SET'),
 
                 /**
                  * Callable
                  * 'del' will be passed one parameter (<custom_key>)
                  */
-                'del'        => env('SIMPLIFI_API_ACCESS_TOKEN_DEL'),
+                'del'        => simplifiHqOauthApiLibEnv('SIMPLIFI_API_ACCESS_TOKEN_DEL'),
             ],
 
         ],
@@ -158,7 +159,7 @@ return (function() {
          *  • If using dotenv your .env file might look like:
          * SIMPLIFI_API_ERROR_LOG_FUNCTION="[\"\\\\App\\\\Classes\\\\Utils\", \"notifyError\"]"
          */
-        'error_log_function'         => env('SIMPLIFI_API_ERROR_LOG_FUNCTION', '"error_log"'),
+        'error_log_function'         => simplifiHqOauthApiLibEnv('SIMPLIFI_API_ERROR_LOG_FUNCTION', '"error_log"'),
 
 
         /**
@@ -167,18 +168,18 @@ return (function() {
          *  • If using dotenv your .env file might look like:
          * SIMPLIFI_API_DEFAULT_HEADERS="{\"Accept\":\"application/json\",\"Content-type\":\"application/json\"}"
          */
-        'headers'                    => !env('SIMPLIFI_API_DEFAULT_HEADERS') ?
+        'headers'                    => !simplifiHqOauthApiLibEnv('SIMPLIFI_API_DEFAULT_HEADERS') ?
             [] :
-            (is_string(env('SIMPLIFI_API_DEFAULT_HEADERS')) ?
-                json_decode(env('SIMPLIFI_API_DEFAULT_HEADERS'), true) :
-                env('SIMPLIFI_API_DEFAULT_HEADERS')
+            (is_string(simplifiHqOauthApiLibEnv('SIMPLIFI_API_DEFAULT_HEADERS')) ?
+                json_decode(simplifiHqOauthApiLibEnv('SIMPLIFI_API_DEFAULT_HEADERS'), true) :
+                simplifiHqOauthApiLibEnv('SIMPLIFI_API_DEFAULT_HEADERS')
             ),
 
 
         /**
          * If this is true then a header will be added like 'trace-debug-header' => ''
          */
-        'add_trace_debug_header'     => !!env('SIMPLIFI_API_ADD_TRACE_DEBUG_HEADER'),
+        'add_trace_debug_header'     => !!simplifiHqOauthApiLibEnv('SIMPLIFI_API_ADD_TRACE_DEBUG_HEADER'),
 
 
     ];
