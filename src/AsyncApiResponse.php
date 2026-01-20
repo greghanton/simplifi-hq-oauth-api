@@ -12,7 +12,7 @@ use JetBrains\PhpStorm\NoReturn;
  * Provides the same interface as ApiResponse but works with Guzzle's PSR-7 responses.
  * Implements JsonSerializable, Iterator, and Countable for compatibility.
  */
-class AsyncApiResponse implements \JsonSerializable, \Iterator, \Countable
+class AsyncApiResponse implements ApiResponseInterface
 {
     private ?ResponseInterface $guzzleResponse = null;
     private ?\Throwable $exception = null;

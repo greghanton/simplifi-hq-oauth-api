@@ -342,11 +342,11 @@ class ApiRequest
      * Execute multiple requests concurrently
      *
      * All requests are executed in parallel using Guzzle's async capabilities.
-     * Returns an array of ApiResponse objects in the same order as the input requests.
+     * Returns an array of response objects in the same order as the input requests.
      *
      * @param array $requests Array of request options arrays
      * @param array $overrideConfig Optional config overrides applied to all requests
-     * @return ApiResponse[] Array of responses (same order as requests)
+     * @return ApiResponseInterface[] Array of responses (same order as requests)
      *
      * @example
      * $responses = ApiRequest::batch([
@@ -461,7 +461,7 @@ class ApiRequest
      * @param array $requests Array of request options arrays
      * @param int $concurrency Maximum simultaneous requests (default: 5)
      * @param array $overrideConfig Optional config overrides
-     * @return ApiResponse[] Array of responses
+     * @return (ApiResponse|AsyncApiResponse)[] Array of responses
      *
      * @example
      * // Make 100 requests, but only 10 at a time
@@ -532,7 +532,7 @@ class ApiRequest
     /**
      * Check if an async response indicates an authentication exception
      */
-    private static function asyncResponseIsAuthenticationException(ApiResponse $response): bool
+    private static function asyncResponseIsAuthenticationException(ApiResponseInterface $response): bool
     {
         $data = $response->response();
         return (isset($data->type) && $data->type === 'AuthenticationException') ||

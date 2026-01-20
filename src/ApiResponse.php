@@ -13,7 +13,7 @@ use JetBrains\PhpStorm\NoReturn;
  *
  * @package SimplifiApi
  */
-class ApiResponse implements \JsonSerializable, \Iterator, \Countable
+class ApiResponse implements ApiResponseInterface
 {
 
     private Curl $curl;
