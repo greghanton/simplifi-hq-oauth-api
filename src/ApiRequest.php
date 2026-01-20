@@ -3,6 +3,7 @@
 namespace SimplifiApi;
 
 use Curl\Curl;
+use GuzzleHttp\Promise\PromiseInterface;
 
 /**
  * Class ApiRequest
@@ -246,6 +247,296 @@ class ApiRequest
 
         return $return;
 
+    }
+
+    /**
+     * Make an asynchronous request using Guzzle
+     *
+     * Returns a Promise that resolves to an ApiResponse.
+     * Use ->wait() to block and get the result, or ->then() for async handling.
+     *
+     * @param array $options Request options (same as request() method)
+     * @param array $overrideConfig Optional config overrides
+     * @return PromiseInterface Promise that resolves to ApiResponse
+     *
+     * @example
+     * // Async with callback
+     * $promise = ApiRequest::requestAsync(['url' => 'sales/123']);
+     * $promise->then(function($response) {
+     *     echo $response->data->name;
+     * });
+     *
+     * @example
+     * // Block and wait for result
+     * $response = ApiRequest::requestAsync(['url' => 'sales/123'])->wait();
+     *
+     * @see request() for synchronous requests
+     * @see batch() for multiple concurrent requests
+     */
+    public static function requestAsync(array $options, array $overrideConfig = []): PromiseInterface
+    {
+        $config = self::getConfig($overrideConfig);
+        $thisOptions = array_merge(self::$defaultRequestOptions, $options);
+
+        // Handle access token
+        if ($thisOptions['with-access-token'] && !isset($thisOptions['data']['access_token'])) {
+            $accessToken = self::getAccessToken();
+            if (is_string($accessToken)) {
+                $thisOptions['headers']['Authorization'] = 'Bearer ' . $accessToken;
+            } else {
+                // Return a rejected promise with the error response
+                return \GuzzleHttp\Promise\Create::promiseFor($accessToken);
+            }
+        }
+
+        if (!isset($thisOptions['url']) && !isset($thisOptions['url-absolute'])) {
+            return \GuzzleHttp\Promise\Create::rejectionFor(
+                new \Exception("ERROR: Url not specified for curl request.")
+            );
+        }
+
+        // Fire before request events
+        if (isset(self::$events[self::EVENT_BEFORE_REQUEST])) {
+            foreach (self::$events[self::EVENT_BEFORE_REQUEST] as $event) {
+                $event($thisOptions, $config);
+            }
+        }
+
+        // Add debug header if configured
+        if ($config['add_trace_debug_header']) {
+            if ($debugHeader = (ApiResponse::getCallerFromBacktrace(debug_backtrace(), __FILE__, __CLASS__)[0] ?? null)) {
+                $thisOptions['headers']['trace-debug-header'] = $debugHeader;
+            }
+        }
+
+        // Add config headers
+        if (!empty($config['headers'])) {
+            foreach ($config['headers'] as $key => $value) {
+                if (!isset($thisOptions['headers'][$key])) {
+                    $thisOptions['headers'][$key] = $value;
+                }
+            }
+        }
+
+        return AsyncClient::requestAsync($thisOptions, $config)
+            ->then(function (ApiResponse $response) use ($thisOptions, $options, $overrideConfig, $config) {
+                // Check for authentication exception and retry
+                if ($thisOptions['retry-on-authentication-exception'] && self::asyncResponseIsAuthenticationException($response)) {
+                    AccessToken::clearCache();
+                    $options['retry-on-authentication-exception'] = false;
+                    return self::requestAsync($options, $overrideConfig)->wait();
+                }
+
+                // Fire after request events
+                if (isset(self::$events[self::EVENT_AFTER_REQUEST])) {
+                    foreach (self::$events[self::EVENT_AFTER_REQUEST] as $event) {
+                        $event($response);
+                    }
+                }
+
+                return $response;
+            });
+    }
+
+    /**
+     * Execute multiple requests concurrently
+     *
+     * All requests are executed in parallel using Guzzle's async capabilities.
+     * Returns an array of ApiResponse objects in the same order as the input requests.
+     *
+     * @param array $requests Array of request options arrays
+     * @param array $overrideConfig Optional config overrides applied to all requests
+     * @return ApiResponse[] Array of responses (same order as requests)
+     *
+     * @example
+     * $responses = ApiRequest::batch([
+     *     ['url' => 'sales/123'],
+     *     ['url' => 'customers', 'data' => ['limit' => 10]],
+     *     ['url' => 'inventory'],
+     * ]);
+     *
+     * foreach ($responses as $response) {
+     *     if ($response->success()) {
+     *         // Handle success
+     *     }
+     * }
+     */
+    public static function batch(array $requests, array $overrideConfig = []): array
+    {
+        $config = self::getConfig($overrideConfig);
+
+        // Get access token once for all requests
+        $accessToken = null;
+        $needsToken = false;
+
+        foreach ($requests as $options) {
+            $merged = array_merge(self::$defaultRequestOptions, $options);
+            if ($merged['with-access-token'] && !isset($merged['data']['access_token'])) {
+                $needsToken = true;
+                break;
+            }
+        }
+
+        if ($needsToken) {
+            $accessToken = self::getAccessToken();
+            if (!is_string($accessToken)) {
+                // Token fetch failed - return the error response for all requests
+                return array_fill(0, count($requests), $accessToken);
+            }
+        }
+
+        // Prepare all requests with merged options
+        $preparedRequests = [];
+        foreach ($requests as $key => $options) {
+            $thisOptions = array_merge(self::$defaultRequestOptions, $options);
+
+            // Add access token if needed
+            if ($thisOptions['with-access-token'] && !isset($thisOptions['data']['access_token']) && $accessToken) {
+                $thisOptions['headers']['Authorization'] = 'Bearer ' . $accessToken;
+            }
+
+            // Validate URL
+            if (!isset($thisOptions['url']) && !isset($thisOptions['url-absolute'])) {
+                throw new \Exception("ERROR: Url not specified for request at index {$key}");
+            }
+
+            // Fire before request events
+            if (isset(self::$events[self::EVENT_BEFORE_REQUEST])) {
+                foreach (self::$events[self::EVENT_BEFORE_REQUEST] as $event) {
+                    $event($thisOptions, $config);
+                }
+            }
+
+            // Add debug header if configured
+            if ($config['add_trace_debug_header']) {
+                if ($debugHeader = (ApiResponse::getCallerFromBacktrace(debug_backtrace(), __FILE__, __CLASS__)[0] ?? null)) {
+                    $thisOptions['headers']['trace-debug-header'] = $debugHeader;
+                }
+            }
+
+            // Add config headers
+            if (!empty($config['headers'])) {
+                foreach ($config['headers'] as $headerKey => $value) {
+                    if (!isset($thisOptions['headers'][$headerKey])) {
+                        $thisOptions['headers'][$headerKey] = $value;
+                    }
+                }
+            }
+
+            $preparedRequests[$key] = $thisOptions;
+        }
+
+        // Execute all requests concurrently
+        $responses = AsyncClient::batch($preparedRequests, $config);
+
+        // Fire after request events and handle auth exceptions
+        foreach ($responses as $key => $response) {
+            // Check for auth exception
+            $thisOptions = $preparedRequests[$key];
+            if ($thisOptions['retry-on-authentication-exception'] && self::asyncResponseIsAuthenticationException($response)) {
+                // Clear cache and retry this single request synchronously
+                AccessToken::clearCache();
+                $retryOptions = $requests[$key];
+                $retryOptions['retry-on-authentication-exception'] = false;
+                $responses[$key] = self::request($retryOptions, $overrideConfig);
+            } else {
+                // Fire after request events
+                if (isset(self::$events[self::EVENT_AFTER_REQUEST])) {
+                    foreach (self::$events[self::EVENT_AFTER_REQUEST] as $event) {
+                        $event($response);
+                    }
+                }
+            }
+        }
+
+        return $responses;
+    }
+
+    /**
+     * Execute multiple requests with a concurrency limit
+     *
+     * Similar to batch() but limits the number of simultaneous requests.
+     * Useful when making many requests to avoid overwhelming the server.
+     *
+     * @param array $requests Array of request options arrays
+     * @param int $concurrency Maximum simultaneous requests (default: 5)
+     * @param array $overrideConfig Optional config overrides
+     * @return ApiResponse[] Array of responses
+     *
+     * @example
+     * // Make 100 requests, but only 10 at a time
+     * $responses = ApiRequest::batchWithConcurrency($requests, 10);
+     */
+    public static function batchWithConcurrency(array $requests, int $concurrency = 5, array $overrideConfig = []): array
+    {
+        $config = self::getConfig($overrideConfig);
+
+        // Get access token once for all requests
+        $accessToken = null;
+        $needsToken = false;
+
+        foreach ($requests as $options) {
+            $merged = array_merge(self::$defaultRequestOptions, $options);
+            if ($merged['with-access-token'] && !isset($merged['data']['access_token'])) {
+                $needsToken = true;
+                break;
+            }
+        }
+
+        if ($needsToken) {
+            $accessToken = self::getAccessToken();
+            if (!is_string($accessToken)) {
+                return array_fill(0, count($requests), $accessToken);
+            }
+        }
+
+        // Prepare all requests
+        $preparedRequests = [];
+        foreach ($requests as $key => $options) {
+            $thisOptions = array_merge(self::$defaultRequestOptions, $options);
+
+            if ($thisOptions['with-access-token'] && !isset($thisOptions['data']['access_token']) && $accessToken) {
+                $thisOptions['headers']['Authorization'] = 'Bearer ' . $accessToken;
+            }
+
+            if (!isset($thisOptions['url']) && !isset($thisOptions['url-absolute'])) {
+                throw new \Exception("ERROR: Url not specified for request at index {$key}");
+            }
+
+            if (isset(self::$events[self::EVENT_BEFORE_REQUEST])) {
+                foreach (self::$events[self::EVENT_BEFORE_REQUEST] as $event) {
+                    $event($thisOptions, $config);
+                }
+            }
+
+            if ($config['add_trace_debug_header']) {
+                if ($debugHeader = (ApiResponse::getCallerFromBacktrace(debug_backtrace(), __FILE__, __CLASS__)[0] ?? null)) {
+                    $thisOptions['headers']['trace-debug-header'] = $debugHeader;
+                }
+            }
+
+            if (!empty($config['headers'])) {
+                foreach ($config['headers'] as $headerKey => $value) {
+                    if (!isset($thisOptions['headers'][$headerKey])) {
+                        $thisOptions['headers'][$headerKey] = $value;
+                    }
+                }
+            }
+
+            $preparedRequests[$key] = $thisOptions;
+        }
+
+        return AsyncClient::batchWithConcurrency($preparedRequests, $config, $concurrency);
+    }
+
+    /**
+     * Check if an async response indicates an authentication exception
+     */
+    private static function asyncResponseIsAuthenticationException(ApiResponse $response): bool
+    {
+        $data = $response->response();
+        return (isset($data->type) && $data->type === 'AuthenticationException') ||
+               (isset($data->message) && $data->message === 'Unauthenticated.');
     }
 
     /**
