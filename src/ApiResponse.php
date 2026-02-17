@@ -3,7 +3,6 @@
 namespace SimplifiApi;
 
 use Curl\Curl;
-use JetBrains\PhpStorm\NoReturn;
 
 /**
  * Class ApiResponse
@@ -548,7 +547,6 @@ class ApiResponse implements ApiResponseInterface
      *
      * @see serialise()
      */
-    #[NoReturn]
     public function dd($prettyHtml = true, $addAdditionalDataToHtml = true): void
     {
         // If error is html just output the html because chances are its a nicly formatted laravel exception

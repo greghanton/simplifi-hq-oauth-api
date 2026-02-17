@@ -4,7 +4,6 @@ namespace SimplifiApi;
 
 use Psr\Http\Message\ResponseInterface;
 use GuzzleHttp\Exception\RequestException;
-use JetBrains\PhpStorm\NoReturn;
 
 /**
  * ApiResponse implementation for Guzzle async responses
@@ -443,7 +442,6 @@ class AsyncApiResponse implements ApiResponseInterface
     /**
      * Die and dump for debugging
      */
-    #[NoReturn]
     public function dd(bool $prettyHtml = true, bool $addAdditionalDataToHtml = true): void
     {
         if ($prettyHtml) {
