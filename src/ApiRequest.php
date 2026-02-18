@@ -17,7 +17,7 @@ class ApiRequest
      * EG ApiRequest::request(['url' => ["sales/$/invoice", 102], 'method' => 'get'])
      * the url would be decoded to sales/102/invoice
      *
-     * @var string this can mutiple characters EG "%%"
+     * @var string this can multiple characters EG "%%"
      */
     const URL_REPLACEMENT_CHARACTER = '$';
 
@@ -34,7 +34,17 @@ class ApiRequest
     /**
      * The after request event identifier
      */
-    const EVENT_AFTER_REQUEST = 'afterRequest';
+    const EVENT_AFTER_REGULAR_REQUEST = 'afterRegularRequest';
+
+    /**
+     * The after async request event identifier
+     */
+    const EVENT_AFTER_ASYNC_REQUEST = 'afterAsyncRequest';
+
+    /**
+     * The after batch request event identifier
+     */
+    const EVENT_AFTER_BATCH_REQUEST = 'afterBatchRequest';
 
     /**
      * An array of events added by self::addEventListener()
@@ -239,8 +249,8 @@ class ApiRequest
         }
 
         // after request?
-        if (isset(self::$events[self::EVENT_AFTER_REQUEST])) {
-            foreach (self::$events[self::EVENT_AFTER_REQUEST] as $event) {
+        if (isset(self::$events[self::EVENT_AFTER_REGULAR_REQUEST])) {
+            foreach (self::$events[self::EVENT_AFTER_REGULAR_REQUEST] as $event) {
                 $event($return);
             }
         }
@@ -328,8 +338,8 @@ class ApiRequest
                 }
 
                 // Fire after request events
-                if (isset(self::$events[self::EVENT_AFTER_REQUEST])) {
-                    foreach (self::$events[self::EVENT_AFTER_REQUEST] as $event) {
+                if (isset(self::$events[self::EVENT_AFTER_ASYNC_REQUEST])) {
+                    foreach (self::$events[self::EVENT_AFTER_ASYNC_REQUEST] as $event) {
                         $event($response);
                     }
                 }
@@ -441,8 +451,8 @@ class ApiRequest
                 $responses[$key] = self::request($retryOptions, $overrideConfig);
             } else {
                 // Fire after request events
-                if (isset(self::$events[self::EVENT_AFTER_REQUEST])) {
-                    foreach (self::$events[self::EVENT_AFTER_REQUEST] as $event) {
+                if (isset(self::$events[self::EVENT_AFTER_BATCH_REQUEST])) {
+                    foreach (self::$events[self::EVENT_AFTER_BATCH_REQUEST] as $event) {
                         $event($response);
                     }
                 }
@@ -536,7 +546,7 @@ class ApiRequest
     {
         $data = $response->response();
         return (isset($data->type) && $data->type === 'AuthenticationException') ||
-               (isset($data->message) && $data->message === 'Unauthenticated.');
+            (isset($data->message) && $data->message === 'Unauthenticated.');
     }
 
     /**
