@@ -7,6 +7,7 @@ use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Promise\Utils;
 use GuzzleHttp\RequestOptions;
 use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\TransferException;
 use Psr\Http\Message\ResponseInterface;
 
 /**
@@ -163,11 +164,10 @@ class AsyncClient
                 function (ResponseInterface $response) use ($config, $options, $timerStart) {
                     return AsyncApiResponse::fromGuzzleResponse($response, $config, $options, $timerStart);
                 },
-                function (RequestException $e) use ($config, $options, $timerStart) {
+                function (TransferException $e) use ($config, $options, $timerStart) {
                     // Handle request errors - still return an ApiResponse
-                    $response = $e->getResponse();
-                    if ($response) {
-                        return AsyncApiResponse::fromGuzzleResponse($response, $config, $options, $timerStart);
+                    if ($e instanceof RequestException && $e->getResponse()) {
+                        return AsyncApiResponse::fromGuzzleResponse($e->getResponse(), $config, $options, $timerStart);
                     }
                     // No response (connection error, timeout, etc.)
                     return AsyncApiResponse::fromException($e, $config, $options, $timerStart);
