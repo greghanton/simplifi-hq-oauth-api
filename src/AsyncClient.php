@@ -8,6 +8,7 @@ use GuzzleHttp\Promise\Utils;
 use GuzzleHttp\RequestOptions;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\TransferException;
 use Psr\Http\Message\ResponseInterface;
 
 /**
@@ -28,7 +29,7 @@ class AsyncClient
             self::$client = new Client([
                 'base_uri' => $config['url-base'] ?? '',
                 'timeout' => $config['CURLOPT_TIMEOUT'] ?? 30,
-                'verify' => false, // Match existing behavior (TODO: enable in production)
+                'verify' => $config['ssl_verify'] ?? false, // Configurable: set ssl_verify => true in production
                 'http_errors' => false, // Don't throw on 4xx/5xx - let ApiResponse handle it
                 'headers' => array_merge(
                     ['Accept' => 'application/json'],
@@ -166,9 +167,8 @@ class AsyncClient
                 },
                 function (RequestException|ConnectException $e) use ($config, $options, $timerStart) {
                     // Handle request errors - still return an ApiResponse
-                    $response = $e->getResponse();
-                    if ($response) {
-                        return AsyncApiResponse::fromGuzzleResponse($response, $config, $options, $timerStart);
+                    if ($e instanceof RequestException && $e->getResponse()) {
+                        return AsyncApiResponse::fromGuzzleResponse($e->getResponse(), $config, $options, $timerStart);
                     }
                     // No response (connection error, timeout, etc.)
                     return AsyncApiResponse::fromException($e, $config, $options, $timerStart);

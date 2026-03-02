@@ -169,9 +169,10 @@ class ApiRequest
         // By default, php-curl-class sets 30sec as the timeout, so let's remove the timeout (0)
         $curl->setTimeout($config['CURLOPT_TIMEOUT'] ?? 0);
 
-        // TODO remove these (they are only here for testing)
-        $curl->setOpt(CURLOPT_SSL_VERIFYPEER, false);
-        $curl->setOpt(CURLOPT_SSL_VERIFYHOST, false);
+        // SSL verification — configurable via config, defaults to false for backwards compatibility
+        $sslVerify = $config['ssl_verify'] ?? false;
+        $curl->setOpt(CURLOPT_SSL_VERIFYPEER, $sslVerify);
+        $curl->setOpt(CURLOPT_SSL_VERIFYHOST, $sslVerify ? 2 : false);
         //$curl->setOpt(CURLOPT_FOLLOWLOCATION, true);
 
         if (isset($thisOptions['url-absolute'])) {
@@ -186,6 +187,7 @@ class ApiRequest
             }
         }
 
+        // Add config headers first, then per-request headers (per-request wins)
         if (!empty($config['headers'])) {
             foreach ($config['headers'] as $key => $value) {
                 $curl->setHeader($key, $value);
@@ -391,8 +393,14 @@ class ApiRequest
             $accessToken = self::getAccessToken();
             if (!is_string($accessToken)) {
                 // Token fetch failed - return the error response for all requests
-                return array_fill(0, count($requests), $accessToken);
+                return array_fill_keys(array_keys($requests), $accessToken);
             }
+        }
+
+        // Calculate debug header once outside loop (performance: avoids repeated debug_backtrace calls)
+        $debugHeader = null;
+        if ($config['add_trace_debug_header']) {
+            $debugHeader = ApiResponse::getCallerFromBacktrace(debug_backtrace(), __FILE__, __CLASS__)[0] ?? null;
         }
 
         // Prepare all requests with merged options
@@ -418,13 +426,11 @@ class ApiRequest
             }
 
             // Add debug header if configured
-            if ($config['add_trace_debug_header']) {
-                if ($debugHeader = (ApiResponse::getCallerFromBacktrace(debug_backtrace(), __FILE__, __CLASS__)[0] ?? null)) {
-                    $thisOptions['headers']['trace-debug-header'] = $debugHeader;
-                }
+            if ($debugHeader) {
+                $thisOptions['headers']['trace-debug-header'] = $debugHeader;
             }
 
-            // Add config headers
+            // Add config headers (don't overwrite per-request headers)
             if (!empty($config['headers'])) {
                 foreach ($config['headers'] as $headerKey => $value) {
                     if (!isset($thisOptions['headers'][$headerKey])) {
@@ -496,8 +502,14 @@ class ApiRequest
         if ($needsToken) {
             $accessToken = self::getAccessToken();
             if (!is_string($accessToken)) {
-                return array_fill(0, count($requests), $accessToken);
+                return array_fill_keys(array_keys($requests), $accessToken);
             }
+        }
+
+        // Calculate debug header once outside loop
+        $debugHeader = null;
+        if ($config['add_trace_debug_header']) {
+            $debugHeader = ApiResponse::getCallerFromBacktrace(debug_backtrace(), __FILE__, __CLASS__)[0] ?? null;
         }
 
         // Prepare all requests
@@ -519,12 +531,11 @@ class ApiRequest
                 }
             }
 
-            if ($config['add_trace_debug_header']) {
-                if ($debugHeader = (ApiResponse::getCallerFromBacktrace(debug_backtrace(), __FILE__, __CLASS__)[0] ?? null)) {
-                    $thisOptions['headers']['trace-debug-header'] = $debugHeader;
-                }
+            if ($debugHeader) {
+                $thisOptions['headers']['trace-debug-header'] = $debugHeader;
             }
 
+            // Add config headers (don't overwrite per-request headers)
             if (!empty($config['headers'])) {
                 foreach ($config['headers'] as $headerKey => $value) {
                     if (!isset($thisOptions['headers'][$headerKey])) {
