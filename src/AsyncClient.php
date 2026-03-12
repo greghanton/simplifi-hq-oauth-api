@@ -67,9 +67,16 @@ class AsyncClient
         } else {
             // For POST, PUT, PATCH, DELETE - send as form params or JSON
             if (!empty($data)) {
-                // Check if we should send as JSON
-                $contentType = $options['headers']['Content-Type'] ?? '';
-                if (str_contains($contentType, 'application/json')) {
+                // Check if we should send as JSON (case-insensitive header check)
+                $isJson = false;
+                foreach ($options['headers'] ?? [] as $key => $value) {
+                    if (strtolower($key) === 'content-type' && str_contains($value, 'application/json')) {
+                        $isJson = true;
+                        break;
+                    }
+                }
+
+                if ($isJson) {
                     $guzzleOptions[RequestOptions::JSON] = $data;
                 } else {
                     $guzzleOptions[RequestOptions::FORM_PARAMS] = $data;
