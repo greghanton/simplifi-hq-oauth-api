@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 class AsyncClient
 {
     private static ?Client $client = null;
+
     private static array $config = [];
 
     /**
@@ -61,12 +62,12 @@ class AsyncClient
         $data = $options['data'] ?? [];
 
         if ($method === 'GET') {
-            if (!empty($data)) {
+            if (! empty($data)) {
                 $guzzleOptions[RequestOptions::QUERY] = $data;
             }
         } else {
             // For POST, PUT, PATCH, DELETE - send as form params or JSON
-            if (!empty($data)) {
+            if (! empty($data)) {
                 // Check if we should send as JSON (case-insensitive header check)
                 $isJson = false;
                 foreach ($options['headers'] ?? [] as $key => $value) {
@@ -98,10 +99,10 @@ class AsyncClient
     public static function buildUrl(array $options, array $config): string
     {
         if (isset($options['url-absolute'])) {
-            return $config['url-base'] . self::urlToString($options['url-absolute']);
+            return $config['url-base'].self::urlToString($options['url-absolute']);
         }
 
-        return $config['url-base'] . ($config['url-version'] ?? '') . self::urlToString($options['url'] ?? '');
+        return $config['url-base'].($config['url-version'] ?? '').self::urlToString($options['url'] ?? '');
     }
 
     /**
@@ -115,11 +116,11 @@ class AsyncClient
 
         if (is_array($url)) {
             if (empty($url)) {
-                throw new \Exception("Invalid url");
+                throw new \Exception('Invalid url');
             }
 
             $urlString = array_shift($url);
-            array_walk($url, fn(&$value) => $value = rawurlencode($value));
+            array_walk($url, fn (&$value) => $value = rawurlencode($value));
 
             return ltrim(self::substituteStringReplacements($urlString, $url), '/\\');
         }
@@ -135,15 +136,15 @@ class AsyncClient
         $parts = explode('$', $string);
 
         if (count($parts) !== count($replacements) + 1) {
-            throw new \Exception("Invalid url: number of replacement characters is incorrect");
+            throw new \Exception('Invalid url: number of replacement characters is incorrect');
         }
 
         $parts = array_values($parts);
         $replacements = array_values($replacements);
 
-        $output = "";
+        $output = '';
         foreach ($parts as $index => $part) {
-            $output .= $part . ($replacements[$index] ?? '');
+            $output .= $part.($replacements[$index] ?? '');
         }
 
         return $output;
@@ -152,8 +153,8 @@ class AsyncClient
     /**
      * Make an async request
      *
-     * @param array $options Request options (url, method, data, headers, etc.)
-     * @param array $config API configuration
+     * @param  array  $options  Request options (url, method, data, headers, etc.)
+     * @param  array  $config  API configuration
      * @return PromiseInterface Promise that resolves to ApiResponse
      */
     public static function requestAsync(array $options, array $config): PromiseInterface
@@ -174,6 +175,7 @@ class AsyncClient
                     if (method_exists($e, 'getResponse') && $e->getResponse()) {
                         return AsyncApiResponse::fromGuzzleResponse($e->getResponse(), $config, $options, $timerStart);
                     }
+
                     // No response (connection error, timeout, etc.)
                     return AsyncApiResponse::fromException($e, $config, $options, $timerStart);
                 }
@@ -183,8 +185,8 @@ class AsyncClient
     /**
      * Execute multiple requests concurrently
      *
-     * @param array $requests Array of request options
-     * @param array $config API configuration
+     * @param  array  $requests  Array of request options
+     * @param  array  $config  API configuration
      * @return array Array of ApiResponse objects (in same order as requests)
      */
     public static function batch(array $requests, array $config): array
@@ -220,9 +222,9 @@ class AsyncClient
     /**
      * Execute multiple requests concurrently with a concurrency limit
      *
-     * @param array $requests Array of request options
-     * @param array $config API configuration
-     * @param int $concurrency Maximum number of concurrent requests
+     * @param  array  $requests  Array of request options
+     * @param  array  $config  API configuration
+     * @param  int  $concurrency  Maximum number of concurrent requests
      * @return array Array of ApiResponse objects
      */
     public static function batchWithConcurrency(array $requests, array $config, int $concurrency = 5): array

@@ -8,7 +8,7 @@ namespace SimplifiApi;
  * Both ApiResponse and AsyncApiResponse implement this interface,
  * allowing code to work with either response type.
  */
-interface ApiResponseInterface extends \JsonSerializable, \Iterator, \Countable
+interface ApiResponseInterface extends \Countable, \Iterator, \JsonSerializable
 {
     /**
      * Check if request was successful
@@ -28,7 +28,7 @@ interface ApiResponseInterface extends \JsonSerializable, \Iterator, \Countable
     /**
      * Return errors as a string
      */
-    public function errorsToString(string $glue = ", ", bool $escape = false): string;
+    public function errorsToString(string $glue = ', ', bool $escape = false): string;
 
     /**
      * Get simple array of error titles

@@ -2,8 +2,9 @@
 
 namespace SimplifiApi;
 
-use Psr\Http\Message\ResponseInterface;
 use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Psr7\Response;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * ApiResponse implementation for Guzzle async responses
@@ -14,16 +15,27 @@ use GuzzleHttp\Exception\RequestException;
 class AsyncApiResponse implements ApiResponseInterface
 {
     private ?ResponseInterface $guzzleResponse = null;
+
     private ?\Throwable $exception = null;
+
     private mixed $decodedResponse = null;
+
     private array $config = [];
+
     private array $requestOptions = [];
+
     private float $requestTime = 0;
+
     private ?int $httpCode = null;
+
     private ?string $effectiveUrl = null;
+
     private bool $hasError = false;
+
     private string $errorMessage = '';
+
     private int $errorCode = 0;
+
     private ?bool $forceSuccess = null;
 
     /**
@@ -35,7 +47,7 @@ class AsyncApiResponse implements ApiResponseInterface
         array $requestOptions,
         float $timerStart
     ): self {
-        $instance = new self();
+        $instance = new self;
         $instance->guzzleResponse = $response;
         $instance->config = $config;
         $instance->requestOptions = $requestOptions;
@@ -83,7 +95,7 @@ class AsyncApiResponse implements ApiResponseInterface
         array $requestOptions,
         float $timerStart
     ): self {
-        $instance = new self();
+        $instance = new self;
         $instance->exception = $exception;
         $instance->config = $config;
         $instance->requestOptions = $requestOptions;
@@ -114,7 +126,8 @@ class AsyncApiResponse implements ApiResponseInterface
         if ($this->forceSuccess !== null) {
             return $this->forceSuccess;
         }
-        return !$this->hasError;
+
+        return ! $this->hasError;
     }
 
     /**
@@ -146,8 +159,8 @@ class AsyncApiResponse implements ApiResponseInterface
 
         if (empty($errors) && $this->hasError) {
             $errors[] = [
-                'title' => $this->errorCode . ': ' . $this->errorMessage .
-                    " " . substr(json_encode($this->serialise()['response'] ?? ''), 0, 300),
+                'title' => $this->errorCode.': '.$this->errorMessage.
+                    ' '.substr(json_encode($this->serialise()['response'] ?? ''), 0, 300),
             ];
         }
 
@@ -157,12 +170,13 @@ class AsyncApiResponse implements ApiResponseInterface
     /**
      * Return errors as a string
      */
-    public function errorsToString(string $glue = ", ", bool $escape = false): string
+    public function errorsToString(string $glue = ', ', bool $escape = false): string
     {
         $errors = $this->getSimpleErrorsArray();
         if ($escape) {
-            array_walk($errors, fn(&$value) => $value = htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8'));
+            array_walk($errors, fn (&$value) => $value = htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8'));
         }
+
         return implode($glue, $errors);
     }
 
@@ -177,8 +191,8 @@ class AsyncApiResponse implements ApiResponseInterface
             $response[] = $error['title'] ?? 'Unknown error';
         }
 
-        if (empty($response) && !$this->success()) {
-            $response[] = "Unknown error occurred.";
+        if (empty($response) && ! $this->success()) {
+            $response[] = 'Unknown error occurred.';
         }
 
         return $response;
@@ -193,8 +207,8 @@ class AsyncApiResponse implements ApiResponseInterface
             $this->dd();
         } else {
             $this->logRequest($message);
-            $message = $message ? $message . "\n" : '';
-            throw new \Exception($message . $this->errorsToString());
+            $message = $message ? $message."\n" : '';
+            throw new \Exception($message.$this->errorsToString());
         }
     }
 
@@ -206,7 +220,7 @@ class AsyncApiResponse implements ApiResponseInterface
         if ($method === 'throw') {
             call_user_func_array([$this, 'throwException'], $args);
         } else {
-            throw new \Exception("Call to undefined method " . __CLASS__ . "::{$method}()");
+            throw new \Exception('Call to undefined method '.__CLASS__."::{$method}()");
         }
     }
 
@@ -241,7 +255,7 @@ class AsyncApiResponse implements ApiResponseInterface
     {
         $options = $this->requestOptions;
 
-        if ($anonymise && !empty($options['headers']['Authorization'])) {
+        if ($anonymise && ! empty($options['headers']['Authorization'])) {
             $options['headers']['Authorization'] = preg_replace(
                 '/Bearer (.*)/i',
                 'Bearer ### REDACTED ###',
@@ -366,8 +380,8 @@ class AsyncApiResponse implements ApiResponseInterface
             $requestOptions['data']['page'] = $this->getCurrentPage() + 1;
 
             $response = ApiRequest::request($requestOptions);
-            if (!$response->success()) {
-                throw new \Exception("Unknown error while getting next page from API.");
+            if (! $response->success()) {
+                throw new \Exception('Unknown error while getting next page from API.');
             }
 
             // Convert to AsyncApiResponse if needed
@@ -377,7 +391,7 @@ class AsyncApiResponse implements ApiResponseInterface
 
             // Wrap regular ApiResponse - this shouldn't happen in practice
             return self::fromGuzzleResponse(
-                new \GuzzleHttp\Psr7\Response(200, [], json_encode($response->response())),
+                new Response(200, [], json_encode($response->response())),
                 $this->config,
                 $requestOptions,
                 microtime(true)
@@ -401,9 +415,10 @@ class AsyncApiResponse implements ApiResponseInterface
      */
     private function getCurrentPage(): int|string
     {
-        if (!$this->paginator) {
-            throw new \Exception("Attempted to get the page number for a non paginated response.");
+        if (! $this->paginator) {
+            throw new \Exception('Attempted to get the page number for a non paginated response.');
         }
+
         return $this->paginator->current_page;
     }
 
@@ -417,9 +432,9 @@ class AsyncApiResponse implements ApiResponseInterface
             if ($return !== false) {
                 return $return;
             }
-            throw new \Exception("Unknown error while fetching all pages of paginated api response.");
+            throw new \Exception('Unknown error while fetching all pages of paginated api response.');
         }
-        throw new \Exception("Unknown error on paginated response. " . $this->errorsToString());
+        throw new \Exception('Unknown error on paginated response. '.$this->errorsToString());
     }
 
     /**
@@ -445,7 +460,7 @@ class AsyncApiResponse implements ApiResponseInterface
     public function dd(bool $prettyHtml = true, bool $addAdditionalDataToHtml = true): void
     {
         if ($prettyHtml) {
-            $doctypeString = "<!DOCTYPE html>";
+            $doctypeString = '<!DOCTYPE html>';
             if (is_string($this->decodedResponse) &&
                 str_starts_with($this->decodedResponse, $doctypeString)
             ) {
@@ -454,15 +469,15 @@ class AsyncApiResponse implements ApiResponseInterface
                 if ($addAdditionalDataToHtml) {
                     $serialised = $this->serialise();
                     unset($serialised['response']);
-                    $respond .= "<pre>" . json_encode($serialised, JSON_PRETTY_PRINT) . "</pre>";
+                    $respond .= '<pre>'.json_encode($serialised, JSON_PRETTY_PRINT).'</pre>';
                 }
 
-                die($respond);
+                exit($respond);
             }
         }
 
-        header("Content-type: application/json");
-        die(json_encode($this->serialise(), JSON_PRETTY_PRINT));
+        header('Content-type: application/json');
+        exit(json_encode($this->serialise(), JSON_PRETTY_PRINT));
     }
 
     /**
@@ -475,11 +490,11 @@ class AsyncApiResponse implements ApiResponseInterface
 
         array_walk_recursive($serialised, function (&$v) {
             if (is_string($v) && strlen($v) > 500) {
-                $v = substr($v, 0, 500) . '<TRUNCATED ' . strlen($v) . '>';
+                $v = substr($v, 0, 500).'<TRUNCATED '.strlen($v).'>';
             }
         });
 
-        call_user_func(AccessToken::getCallableLogFunction(), "{$message} " . json_encode($serialised));
+        call_user_func(AccessToken::getCallableLogFunction(), "{$message} ".json_encode($serialised));
     }
 
     /**
@@ -507,8 +522,8 @@ class AsyncApiResponse implements ApiResponseInterface
 
     private function iterableCheck(): void
     {
-        if (!$this->dataIsIterable()) {
-            throw new \Exception("Invalid argument: API response is not iterable.");
+        if (! $this->dataIsIterable()) {
+            throw new \Exception('Invalid argument: API response is not iterable.');
         }
     }
 
@@ -521,12 +536,14 @@ class AsyncApiResponse implements ApiResponseInterface
     public function current(): mixed
     {
         $this->iterableCheck();
+
         return current($this->decodedResponse->data);
     }
 
     public function key(): mixed
     {
         $this->iterableCheck();
+
         return key($this->decodedResponse->data);
     }
 
@@ -540,6 +557,7 @@ class AsyncApiResponse implements ApiResponseInterface
     {
         $this->iterableCheck();
         $key = key($this->decodedResponse->data);
+
         return $key !== null && $key !== false;
     }
 
@@ -550,6 +568,6 @@ class AsyncApiResponse implements ApiResponseInterface
         if (is_array($this->decodedResponse?->data ?? null)) {
             return count($this->decodedResponse->data);
         }
-        throw new \Exception("Error: Attempting to count a non countable object.");
+        throw new \Exception('Error: Attempting to count a non countable object.');
     }
 }
