@@ -168,8 +168,8 @@ class ApiRequest
         // By default, php-curl-class sets 30sec as the timeout, so let's remove the timeout (0)
         $curl->setTimeout($config['CURLOPT_TIMEOUT'] ?? 0);
 
-        // SSL verification — configurable via config, defaults to false for backwards compatibility
-        $sslVerify = $config['ssl_verify'] ?? false;
+        // SSL verification — configurable via config, defaults to true
+        $sslVerify = $config['ssl_verify'] ?? true;
         $curl->setOpt(CURLOPT_SSL_VERIFYPEER, $sslVerify);
         $curl->setOpt(CURLOPT_SSL_VERIFYHOST, $sslVerify ? 2 : false);
         // $curl->setOpt(CURLOPT_FOLLOWLOCATION, true);
@@ -225,16 +225,10 @@ class ApiRequest
                 $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig, $timerStart);
 
                 break;
-            case 'OPTIONS':
-
-                break;
             case 'DELETE':
 
                 $curl->delete($url, null, $thisOptions['data']);
                 $return = self::createApiResponse($config, $curl, $thisOptions, $options, $overrideConfig, $timerStart);
-
-                break;
-            case 'HEAD':
 
                 break;
             case 'PATCH':

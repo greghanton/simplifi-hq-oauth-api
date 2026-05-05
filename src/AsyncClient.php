@@ -27,7 +27,7 @@ class AsyncClient
             self::$client = new Client([
                 'base_uri' => $config['url-base'] ?? '',
                 'timeout' => $config['CURLOPT_TIMEOUT'] ?? 30,
-                'verify' => $config['ssl_verify'] ?? false, // Configurable: set ssl_verify => true in production
+                'verify' => $config['ssl_verify'] ?? true,
                 'http_errors' => false, // Don't throw on 4xx/5xx - let ApiResponse handle it
                 'headers' => array_merge(
                     ['Accept' => 'application/json'],

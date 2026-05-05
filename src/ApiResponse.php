@@ -810,67 +810,6 @@ class ApiResponse implements ApiResponseInterface
 
         // Only keep the first three stacks
         return array_slice($arrayBacktrace, 0, 3);
-
-        // Get the first part of the debug_backtrace outside this file
-        //        $i = 0;
-        //        while (
-        //            (isset($backtrace[$i]['file']) && $backtrace[$i]['file'] === $file)
-        //            || (isset($backtrace[$i]['class']) && $backtrace[$i]['class'] === $class)
-        //        ) {
-        //            $i++;
-        //        }
-        //
-        //        // if class is in previous stack then we need to minus one
-        //        if (isset($backtrace[$i - 1]['class']) && $backtrace[$i - 1]['class'] === $class &&
-        //            isset($backtrace[$i - 1]['file']) && isset($backtrace[$i - 1]['line'])
-        //        ) {
-        //            $i--;
-        //        }
-        //
-        //        if ($i >= count($backtrace)) {
-        //            // No part of the debug_backtrace is outside this file
-        //            // So just grab the first frame
-        //            $i = 0;
-        //        }
-        //
-        //        if ($i < 0) {
-        //            $i = 0;
-        //        }
-        //
-        //        $stacks = [];
-        //
-        //        // Grab the 3 closest stacks
-        //        for ($j = $i; $j < $i + 3; $j++) {
-        //
-        //            if (isset($backtrace[$j])) {
-        //
-        //                $stack = $backtrace[$j];
-        //
-        //                if (isset($stack['file']) && isset($stack['line'])) {
-        //
-        //                    // Remove the document root from the url as it's unnecessary
-        //                    $file = isset($_SERVER['DOCUMENT_ROOT']) ?
-        //                        preg_replace("/^" . preg_quote(realpath($_SERVER['DOCUMENT_ROOT'] . "/.."), '/') . "/", '', $stack['file']) :
-        //                        $stack['file'];
-        //
-        //                    $stacks[] = $file . '::' . $stack['line'];
-        //                } elseif (isset($stack['class']) && isset($stack['function'])) {
-        //                    $stacks[] = $stack['class'] .
-        //                        (!empty($stack['type']) ? $stack['type'] : '::') .
-        //                        $stack['function'];
-        //                } else {
-        //                    $stacks[] = null;
-        //                }
-        //
-        //            }
-        //
-        //        }
-        //
-        //        if ($stacks) {
-        //            return $stacks;
-        //        }
-        //
-        //        return null;
     }
 
     /**

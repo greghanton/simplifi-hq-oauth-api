@@ -163,6 +163,11 @@ return (function () {
             ),
 
         /**
+         * Whether to verify SSL certificates for HTTP requests.
+         */
+        'ssl_verify' => simplifiHqOauthApiLibEnv('SIMPLIFI_API_SSL_VERIFY', true),
+
+        /**
          * If this is true then a header will be added like 'trace-debug-header' => ''
          */
         'add_trace_debug_header' => (bool) simplifiHqOauthApiLibEnv('SIMPLIFI_API_ADD_TRACE_DEBUG_HEADER'),
