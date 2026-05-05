@@ -1,5 +1,12 @@
 {
   "name": "greghanton/simplifi-hq-oauth-api",
+  "description": "OAuth2 client and request dispatcher for the Joy Pilot API tier",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Greg Hanton"
+    }
+  ],
   "autoload": {
     "psr-4": {
       "SimplifiApi\\": "src"
@@ -18,5 +25,9 @@
   },
   "require-dev": {
     "laravel/pint": "^1.29"
+  },
+  "scripts": {
+    "lint": "vendor/bin/pint",
+    "lint:check": "vendor/bin/pint --test"
   }
 }
