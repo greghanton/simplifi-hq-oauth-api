@@ -24,59 +24,57 @@ The only consumer-visible change in the entire programme is the GUI's `composer.
 
 ---
 
-## Stage 0 — Housekeeping
+## Stage 0 — Housekeeping ✓
+
+**Status:** Signed off 2026-05-07. Tag `1.0.0` cut (`1.0.2` patch on top of follow-ups).
 
 **Goal:** dependency hygiene, packaging metadata, dead-code removal, first real semver tag. No behaviour change to the public surface.
 
-**Duration:** ~2–3 dev-days
+**Duration:** ~2–3 dev-days (actual: matched)
 
 ### Tasks — code
 
-- [ ] **Add Pint** — `composer require --dev laravel/pint`, drop a `pint.json` (Laravel preset), commit the formatting diff as a single PR, add `vendor/bin/pint --test` to CI as a **non-blocking** check (promoted to blocking in Stage 4)
-- [ ] **Constrain `php-curl-class`** — replace `"php-curl-class/php-curl-class": "*"` in `composer.json` with a real semver range (`^9.0` or whichever current major is in use). The wildcard is a supply-chain footgun
-- [ ] **Add `ssl_verify` to `config.php` with default `true`** — currently absent from `config.php`; the default `false` lives in [src/ApiRequest.php:173](src/ApiRequest.php) and [src/AsyncClient.php:29](src/AsyncClient.php) as `?? false` fallbacks. Both fallbacks must flip to `?? true` in the same PR, otherwise the config-file change is a no-op
-- [ ] **Flip `grant_type` default** in [config.php:26](config.php) from `'password'` to `'client_credentials'`. The "backwards compatibility" comment predates current usage. Pre-flight: grep the GUI for callers passing `grant_type` explicitly
-- [ ] **Delete dead code** —
-  - The commented-out block at the bottom of [src/ApiResponse.php:790-849](src/ApiResponse.php) (`getCallerFromBacktrace`)
-  - The empty `OPTIONS` and `HEAD` switch arms in [src/ApiRequest.php:229,238](src/ApiRequest.php) (they fall through to the `Invalid method` throw — keep the throw at the default arm and drop the empty cases)
-  - **NOT** the `__call('throw')` magic in [src/ApiResponse.php:180-191](src/ApiResponse.php) — that is the live public API the GUI calls 317 times
+- [x] **Add Pint** — `composer require --dev laravel/pint` done; `lint` / `lint:check` scripts wired in [composer.json](composer.json); repo formatted in commit `187c6af`. Pint defaults to the Laravel preset with no config file, so no `pint.json` was added (an explicit `{"preset":"laravel"}` would be a no-op). CI Pint check deferred — see Sign-off
+- [x] **Constrain `php-curl-class`** — pinned to `^13.0.0` in `composer.json`
+- [x] **Add `ssl_verify` to `config.php` with default `true`** — [config.php:168](config.php) defaults `true`; both source fallbacks flipped to `?? true` at [src/ApiRequest.php:172](src/ApiRequest.php) and [src/AsyncClient.php:30](src/AsyncClient.php). Note: this is a behavioural-default change — any consumer running against self-signed or invalid certs must now set `SIMPLIFI_API_SSL_VERIFY=false` explicitly
+- [x] **Delete dead code** — empty `OPTIONS` / `HEAD` switch arms removed from [src/ApiRequest.php](src/ApiRequest.php); commented-out `getCallerFromBacktrace` block removed from [src/ApiResponse.php](src/ApiResponse.php). The `__call('throw')` magic at [src/ApiResponse.php:180-191](src/ApiResponse.php) is retained as planned
 
 ### Tasks — packaging
 
-- [ ] **Fill in `composer.json` metadata** — currently missing `description`, `license`, `authors`, `require-dev`, `scripts`. Add all of these alongside the Pint install:
-  ```json
-  "description": "OAuth2 client and request dispatcher for the Joy Pilot API tier",
-  "license": "proprietary",
-  "authors": [{ "name": "Greg Hanton" }],
-  "scripts": {
-      "lint": "vendor/bin/pint",
-      "lint:check": "vendor/bin/pint --test"
-  }
-  ```
-- [ ] **Add `LICENSE`** at repo root (proprietary or whatever fits)
-- [ ] **Add `README.md`** — minimal: install, basic usage, link to forthcoming Stage 1 docs
-- [ ] **Add `.gitattributes`** to exclude `tests/`, `.github/`, `pint.json`, etc. from `composer install --no-dev` archives
+- [x] **Fill in `composer.json` metadata** — `description`, `license: proprietary`, `authors`, `require-dev`, `scripts` all set
+- [x] **Add `LICENSE`** at repo root
+- [x] **Add `README.md`** — minimal install + basic-usage stub linking to forthcoming Stage 1 docs
+- [x] **Add `.gitattributes`** — excludes `tests/`, `.github/`, `pint.json`, `phpunit.xml`, `OAUTH_MODERNISATION_PLAN.md`, etc. from `composer install --no-dev` archives
 
 ### Tasks — repo hygiene
 
-- [ ] **Resolve the `VERSION` constant** in [config.php:5,12](config.php) — currently hand-edited as `'1.0.1'`, must go before tagging or it drifts on day one. Either remove entirely (consumers don't appear to read it externally), or auto-derive from `git describe`. Recommendation: remove
-- [ ] **Tidy stale branches** — `add_guzzle`, `async`. Inspect, then merge or delete. Both pre-date current direction
-- [ ] **Tag `1.0.0`** — first real semver tag, captures the cleaned state. All of the above lands first so the tag is meaningful
+- [x] **Tidy stale branches** — `add_guzzle` and `async` resolved; both gone from local and origin
+- [x] **Tag `1.0.0`** — first real semver tag. `1.0.2` patch followed during ssl_verify and php-curl-class touch-ups
 
 ### Cross-repo
 
-- [ ] **GUI Stage 0 pin** — once `1.0.0` is tagged, GUI's `composer.json` switches from `dev-master` to `^1.0`. Tracked in [GUI_MODERNISATION_PLAN.md:92](GUI_MODERNISATION_PLAN.md). OAuth Stage 0 blocks GUI Stage 0
+- [x] **GUI Stage 0 pin** — GUI's `composer.json` pins `greghanton/simplifi-hq-oauth-api: ^1.0.0` (resolves to `1.0.2` in the lockfile)
 
-### Acceptance criteria
+### Sign-off — what was deferred or dropped
 
-- `composer.json` has full metadata, real `php-curl-class` constraint, no wildcards
-- `ssl_verify` defaults to `true` end-to-end (config + both source fallbacks)
-- `grant_type` defaults to `client_credentials`
-- Dead code removed (backtrace block, empty switch arms); `__call('throw')` retained
-- Stale branches resolved
-- `VERSION` constant removed (or auto-derived)
-- Pint installed, non-blocking CI check live
-- `1.0.0` tagged; GUI pinned to `^1.0`
+Two items pushed to Stage 1; two items decided against:
+
+- **Push to Stage 1 — `grant_type` default → `client_credentials`**. Flipping the default mid-flight risks silently changing auth in production if the GUI's `.env` does not set `SIMPLIFI_API_GRANT_TYPE` explicitly. Stage 1 handles this as a coordinated two-step: GUI declares its grant type explicitly in every environment first, then the OAuth-API default flips in a separate deploy
+- **Push to Stage 1 — CI Pint check**. Stage 1 brings PHPStan and Pest, which together justify creating `.github/workflows/`. A Pint-only Stage 0 CI would have been a runner with one trivial check; bundling all three in Stage 1 is cleaner
+- **Decided against — resolve `VERSION` constant**. The plan's "drift on day one" worry never materialised: the constant has tracked tags by hand through `1.0.0` and `1.0.2`. Removing it would cost the User-Agent version segment for no tangible benefit. Auto-deriving from `git describe` is unreliable post-Composer install. Keeping the constant; manual bump-on-tag discipline is the rule
+- **Decided against — `pint.json` file**. Pint with no config file already defaults to the Laravel preset, which is what the plan called for; an explicit file would be a no-op
+
+### Acceptance criteria — outcome
+
+- ✅ `composer.json` has full metadata, real `php-curl-class` constraint, no wildcards
+- ✅ `ssl_verify` defaults to `true` end-to-end (config + both source fallbacks)
+- ✅ Dead code removed (backtrace block, empty switch arms); `__call('throw')` retained
+- ✅ Stale branches resolved
+- ✅ Pint installed and applied repo-wide; lint scripts wired in `composer.json`
+- ✅ `1.0.0` tagged; GUI pinned to `^1.0`
+- → `grant_type` default flip: handled in Stage 1 (see *OAuth grant type — coordinated default flip*)
+- → CI workflow: handled in Stage 1 alongside Pest + PHPStan
+- ✗ `VERSION` constant removal: decided against (see Sign-off above)
 
 ---
 
@@ -137,6 +135,7 @@ The package has no Laravel dependencies (verified — [composer.json](composer.j
 
 - [ ] **`composer require --dev phpstan/phpstan`** at level 5 (small repo, no ratchet needed)
 - [ ] **`phpstan.neon`** — paths `src/`, level 5
+- [ ] **Create `.github/workflows/ci.yml`** — runs `composer install`, `vendor/bin/pint --test` (non-blocking — promoted to blocking in Stage 4), `vendor/bin/phpstan analyse` (blocking), and `vendor/bin/pest` (blocking) on every push and PR. Deferred from Stage 0 because Stage 0 had no test or static-analysis gates to put in it
 - [ ] **Add `vendor/bin/phpstan analyse` as a required CI check** (blocking from install — different from API/GUI which start at level 1)
 
 ### HTTP client consolidation — decide and act
@@ -152,6 +151,22 @@ The package currently runs **two** HTTP clients: `php-curl-class` (sync, [src/Ap
 - [ ] **Write `README.md` properly** — install, configuration (env vars table), basic usage examples, the `config:cache` gotcha, Redis cache setup, mutex setup, event listener examples
 - [ ] **Update CHANGELOG** for `1.1.0`
 
+### OAuth grant type — coordinated default flip
+
+Deferred from Stage 0. The current [config.php:24](config.php) default for `grant_type` is `'password'`, which OAuth 2.1 / RFC 9700 deprecate. Flip the default to `'client_credentials'` (recommended for server-to-server) **without breaking GUI auth in production**.
+
+The only risk is if any consumer environment is silently relying on the `password` default — flipping the default would change auth there. Mitigated by a two-step rollout that decouples "consumer declares intent" from "OAuth-API changes default".
+
+Pre-flight:
+
+- [ ] **Audit every GUI environment `.env`** for `SIMPLIFI_API_GRANT_TYPE`. For any environment where it is unset, set it explicitly to whatever that environment is currently using (typically `password`) and deploy the GUI. **No behaviour change yet** — the GUI is just declaring what it was doing implicitly
+- [ ] **Confirm the API tier accepts `client_credentials`** — verify the Laravel Passport client used by the GUI has the `client_credentials` grant enabled. If only `password` is enabled, the API tier needs a coordinated config change too
+
+Once every consumer environment sets `SIMPLIFI_API_GRANT_TYPE` explicitly:
+
+- [ ] **Flip the default** at [config.php:24](config.php) from `'password'` to `'client_credentials'`. Drop the "Default to 'password' for backwards compatibility" comment
+- [ ] **Update README** to document `client_credentials` as the recommended grant type and `password` as deprecated
+
 ### Tag and pin
 
 - [ ] **Tag `1.1.0`** once smoke tests + PHPStan green in CI
@@ -164,7 +179,9 @@ The package currently runs **two** HTTP clients: `php-curl-class` (sync, [src/Ap
 - `ApiResponse` reads both legacy and new envelopes for pagination and errors; verified by Pest fixtures
 - Pest smoke test suite green, covering both envelopes, auth-retry, mutex, batch
 - Vanilla PHPStan level 5 blocking in CI
+- `.github/workflows/ci.yml` live with Pint (non-blocking), PHPStan (blocking), Pest (blocking) checks
 - `php-curl-class` either consolidated away (preferred) or formally deferred to Stage 4
+- `grant_type` default flipped to `client_credentials`, with every GUI environment `.env` declaring its grant type explicitly first
 - `1.1.0` tagged; GUI pinned to `^1.1`
 
 ---
@@ -310,7 +327,8 @@ Sequencing matters:
 
 | Cross-repo dependency | Direction | Stage |
 |---|---|---|
-| GUI Stage 0 pin to `^1.0` | OAuth blocks GUI | Stage 0 |
+| GUI Stage 0 pin to `^1.0` | OAuth blocks GUI | Stage 0 ✓ |
+| OAuth `grant_type` default flip | GUI must declare grant type in every `.env` first; API tier must accept `client_credentials` | Stage 1 |
 | OAuth Stage 1 envelope-shape support | API Stage 1 needs this | Stage 1 |
 | OAuth Stage 1 smoke tests covering both envelopes | API Stage 1 line 61 explicitly references | Stage 1 |
 | Mutex metrics into Pulse | GUI registers listeners; OAuth provides hooks (already exist) | Stage 2 onwards |
@@ -320,7 +338,7 @@ Sequencing matters:
 
 | Stage | Goal | Duration | Effort |
 |---|---|---|---|
-| 0 | Housekeeping, first tag | ~2–3 days | ~2–3 dev-days |
+| 0 ✓ | Housekeeping, first tag (signed off 2026-05-07; tags `1.0.0` + `1.0.2`) | ~2–3 days | ~2–3 dev-days |
 | 1 | Hardening, envelope contract, smoke tests | ~1–1.5 weeks | ~5–8 dev-days |
 | 2 | Pilot watching brief (reactive) | distributed across GUI Stage 2 | ~0–2 dev-days |
 | 3 | Roll-out watching brief (reactive) | distributed across GUI Stage 3 | ~1–3 dev-days |
