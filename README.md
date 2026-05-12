@@ -8,10 +8,37 @@ OAuth2 client and request dispatcher for the Joy Pilot API tier.
 composer require greghanton/simplifi-hq-oauth-api
 ```
 
+## Configuration
+
+This package loads defaults from `config.php` and then reads values from environment variables using `simplifiHqOauthApiLibEnv()`.
+
+### Environment variables
+
+| Variable | Required | Default | Notes |
+| --- | --- | --- | --- |
+| `SIMPLIFI_API_GRANT_TYPE` | No | `client_credentials` | Recommended for server-to-server. `password` is deprecated (OAuth 2.1 / RFC 9700 guidance). |
+| `SIMPLIFI_API_CLIENT_ID` | Yes | - | OAuth client id. |
+| `SIMPLIFI_API_CLIENT_SECRET` | Yes | - | OAuth client secret. |
+| `SIMPLIFI_API_USERNAME` | Only for `password` grant | - | Username/email for password grant flows. |
+| `SIMPLIFI_API_PASSWORD` | Only for `password` grant | - | Password for password grant flows. |
+| `SIMPLIFI_API_SCOPE` | No | `*` | OAuth scope. |
+| `SIMPLIFI_API_URL_BASE` | Yes | - | API base URL, e.g. `https://api.example.com/`. |
+| `SIMPLIFI_API_ACCESS_TOKEN_STORE_AS` | No | `temp_file` | `custom` is recommended for production, `temp_file` is fine for local/dev. |
+| `SIMPLIFI_API_ACCESS_TOKEN_TEMP_FILE_FILENAME` | No | Derived from project path/version | Only used when `store_as=temp_file`. |
+| `SIMPLIFI_API_ACCESS_TOKEN_CUSTOM_KEY` | For `custom` store | `simplifi-hq-oauth-api-access-token` | Key passed to custom callables. |
+| `SIMPLIFI_API_ACCESS_TOKEN_GET` | For `custom` store | - | JSON-encoded callable. Signature: `get($customKey): ?string`. |
+| `SIMPLIFI_API_ACCESS_TOKEN_SET` | For `custom` store | - | JSON-encoded callable. Signature: `set($customKey, $tokenJson): mixed`. |
+| `SIMPLIFI_API_ACCESS_TOKEN_DEL` | For `custom` store | - | JSON-encoded callable. Signature: `del($customKey): mixed`. |
+| `SIMPLIFI_API_ACCESS_TOKEN_LOCK` | Optional | - | JSON-encoded callable. Signature: `lock($customKey, $ttlSeconds): bool`. |
+| `SIMPLIFI_API_ACCESS_TOKEN_UNLOCK` | Optional | - | JSON-encoded callable. Signature: `unlock($customKey): mixed`. |
+| `SIMPLIFI_API_ERROR_LOG_FUNCTION` | No | `"error_log"` | JSON-encoded callable for internal error logging. |
+| `SIMPLIFI_API_DEFAULT_HEADERS` | No | `[]` | JSON object of headers merged into each request. |
+| `SIMPLIFI_API_SSL_VERIFY` | No | `true` | TLS certificate verification for HTTP requests. |
+| `SIMPLIFI_API_ADD_TRACE_DEBUG_HEADER` | No | `false` | Adds `trace-debug-header` from caller backtrace. |
+
 ## Basic usage
 
-1. Add API credentials and endpoint values in `config.php`.
-2. Dispatch a request with `SimplifiApi\\ApiRequest`.
+### Synchronous request
 
 ```php
 <?php
@@ -25,24 +52,62 @@ $response = ApiRequest::request([
     'url' => 'sales',
 ]);
 
+if (! $response->success()) {
+    throw new RuntimeException($response->errorsToString());
+}
+
+foreach ($response as $row) {
+    // ApiResponse implements Iterator when response has a top-level "data" array.
+    var_dump($row);
+}
+```
+
+### Async request
+
+```php
+<?php
+
+use SimplifiApi\ApiRequest;
+
+$promise = ApiRequest::requestAsync([
+    'method' => 'GET',
+    'url' => 'sales',
+]);
+
+$response = $promise->wait();
+
 if ($response->success()) {
-    $data = $response->response();
-    var_dump($data);
+    var_dump($response->response());
+}
+```
+
+### Batch request
+
+```php
+<?php
+
+use SimplifiApi\ApiRequest;
+
+$responses = ApiRequest::batch([
+    ['method' => 'GET', 'url' => 'sales'],
+    ['method' => 'GET', 'url' => ['sales/$/invoice', 102]],
+]);
+
+foreach ($responses as $response) {
+    if (! $response->success()) {
+        error_log($response->errorsToString());
+    }
 }
 ```
 
 ## Access token storage
 
-This package supports two access-token storage modes:
+Supported modes:
 
-- `custom` (recommended for production, typically Redis)
-- `temp_file` (kept as-is for local/dev fallback)
+- `custom` (recommended for production; usually Redis)
+- `temp_file` (unchanged local/dev fallback)
 
-No breaking change: `temp_file` remains available and unchanged.
-
-### Redis via custom callables (recommended)
-
-Set storage mode to `custom` and provide JSON-encoded callables for `get`, `set`, and `del`.
+### Redis setup via custom callables
 
 ```dotenv
 SIMPLIFI_API_ACCESS_TOKEN_STORE_AS=custom
@@ -52,13 +117,7 @@ SIMPLIFI_API_ACCESS_TOKEN_SET="[\"\\\\App\\\\Cache\\\\TokenStore\", \"set\"]"
 SIMPLIFI_API_ACCESS_TOKEN_DEL="[\"\\\\App\\\\Cache\\\\TokenStore\", \"del\"]"
 ```
 
-Callable contracts:
-
-- `get($customKey): string|null`
-- `set($customKey, $tokenJson): mixed`
-- `del($customKey): mixed`
-
-### Laravel example (`Cache::store('redis')`)
+Laravel example:
 
 ```php
 <?php
@@ -76,7 +135,6 @@ class TokenStore
 
     public static function set(string $key, string $value): bool
     {
-        // Access token payload already includes expiry metadata.
         return Cache::store('redis')->forever($key, $value);
     }
 
@@ -87,31 +145,16 @@ class TokenStore
 }
 ```
 
-### Important Laravel `config:cache` gotcha
+## Token refresh mutex (optional, recommended in production)
 
-The package reads env values through `simplifiHqOauthApiLibEnv()` in `src/helpers.php`:
+When several processes see an expired token at the same time, configure lock/unlock callables to prevent duplicate `oauth/token` refresh requests.
 
-1. If your app defines `simplifiHqOauthApiEnv()`, that is used.
-2. Otherwise, it falls back to Laravel `env()`.
+```dotenv
+SIMPLIFI_API_ACCESS_TOKEN_LOCK="[\"\\\\App\\\\Cache\\\\TokenLock\", \"acquire\"]"
+SIMPLIFI_API_ACCESS_TOKEN_UNLOCK="[\"\\\\App\\\\Cache\\\\TokenLock\", \"release\"]"
+```
 
-In Laravel apps with `config:cache`, calling `env()` outside config files returns `null`. If you want Redis/custom token storage to keep working under cached config, define and use your own `simplifiHqOauthApiEnv()` wrapper so values come from a safe source (for example cached config values), not direct runtime `env()`.
-
-## Token refresh mutex (parallel-call protection)
-
-When multiple requests try to refresh an expired token simultaneously, this package uses an optional lock/unlock pair to ensure only one process calls `oauth/token`. This prevents duplicate auth requests and reduces load on the OAuth server.
-
-**Mutex is opt-in.** If you do not configure `lock` and `unlock` callables, the package works without it (the current behaviour).
-
-### When to enable the mutex
-
-Enable the mutex for any production deployment with **parallel requests**:
-
-- Laravel Inertia partial reloads (multiple page fragments load concurrently)
-- Queue workers processing jobs in parallel
-- API serverless functions running concurrently
-- Any scenario where multiple PHP processes can refresh the token simultaneously
-
-### Setting up the mutex in Laravel
+Laravel lock example:
 
 ```php
 <?php
@@ -122,67 +165,106 @@ use Illuminate\Support\Facades\Cache;
 
 class TokenLock
 {
-    /**
-     * Try to acquire the token-refresh lock
-     *
-     * @param  string  $customKey  The cache key for the token
-     * @param  int  $ttl  Lock time-to-live in seconds
-     * @return bool True if lock acquired, false otherwise
-     */
+    private static array $locks = [];
+
     public static function acquire(string $customKey, int $ttl): bool
     {
-        // Laravel's Cache::lock() returns a Lock instance if acquired, null if not
-        // The lock auto-releases after $ttl seconds
-        $lock = Cache::store('redis')->lock($customKey . ':lock', $ttl);
-        
-        if ($lock->get()) {
-            // Store the lock in a thread-safe way so release() can find it
-            // (Laravel's lock() doesn't maintain a reference, so we use a static)
-            static::$currentLock = $lock;
-            return true;
+        $lockName = $customKey.':oauth-refresh-lock';
+        $lock = Cache::store('redis')->lock($lockName, $ttl);
+
+        if (! $lock->get()) {
+            return false;
         }
-        
-        return false;
+
+        self::$locks[$lockName] = $lock;
+
+        return true;
     }
 
-    /**
-     * Release the token-refresh lock
-     */
     public static function release(string $customKey): void
     {
-        if (isset(static::$currentLock)) {
-            static::$currentLock->release();
-            unset(static::$currentLock);
-        }
-    }
+        $lockName = $customKey.':oauth-refresh-lock';
 
-    private static $currentLock;
+        if (! isset(self::$locks[$lockName])) {
+            return;
+        }
+
+        self::$locks[$lockName]->release();
+        unset(self::$locks[$lockName]);
+    }
 }
 ```
 
-Then add to your `.env`:
+Mutex flow inside the package:
 
-```dotenv
-SIMPLIFI_API_ACCESS_TOKEN_LOCK="[\"\\App\\Cache\\TokenLock\", \"acquire\"]"
-SIMPLIFI_API_ACCESS_TOKEN_UNLOCK="[\"\\App\\Cache\\TokenLock\", \"release\"]"
+1. Try to lock (currently with ~10s TTL).
+2. If lock is acquired, refresh token and unlock.
+3. If lock is not acquired, wait 1-2s, re-check cache, and reuse token if present.
+4. Only fetch a fresh token if cache is still empty after waiting.
+
+## Event listener examples
+
+Use listeners for metrics, tracing, or debugging without changing package internals.
+
+```php
+<?php
+
+use SimplifiApi\ApiRequest;
+use SimplifiApi\ApiResponse;
+
+ApiRequest::addEventListener(ApiRequest::EVENT_BEFORE_REQUEST, function (array $requestOptions, array $config): void {
+    // Example: emit request-start metric.
+});
+
+ApiRequest::addEventListener(ApiRequest::EVENT_AFTER_REGULAR_REQUEST, function (ApiResponse $response): void {
+    // Example: emit sync request timing metric.
+});
+
+ApiRequest::addEventListener(ApiRequest::EVENT_AFTER_ASYNC_REQUEST, function (ApiResponse $response): void {
+    // Example: emit async request metric.
+});
+
+ApiRequest::addEventListener(ApiRequest::EVENT_AFTER_BATCH_REQUEST, function (ApiResponse $response): void {
+    // Example: emit per-item batch metric.
+});
+
+ApiResponse::addEventListener(ApiResponse::EVENT_RESPONSE_CREATED, function (ApiResponse $response): void {
+    // Example: central hook after any response object is created.
+});
 ```
 
-### Mutex contract
+## Laravel `config:cache` gotcha
 
-- **`lock($customKey, $ttl)` must return:** `bool` — `true` if lock acquired, `false` if another process holds it
-- **`unlock($customKey)` must return:** void or bool (return value is ignored)
+`src/helpers.php` resolves env values in this order:
 
-### How the mutex works
+1. `simplifiHqOauthApiEnv($key, $default)` if your app defines it
+2. fallback to Laravel `env($key, $default)` if available
+3. fallback default
 
-When the cache is empty and a token refresh is needed:
+With Laravel `config:cache`, runtime `env()` calls outside config files return `null`. To keep custom token store and mutex callables reliable under cached config, define `simplifiHqOauthApiEnv()` in your app and read from your own config layer instead of direct runtime `env()`.
 
-1. The package tries to acquire the lock (~10s TTL).
-2. **If acquired:** The package refreshes the token, caches it, then releases the lock.
-3. **If not acquired:** Another process holds the lock. This process waits 1–2 seconds, then rechecks the cache. If a fresh token was cached by the lock holder, it uses that token. If the cache is still empty after waiting, it fetches a fresh token (without holding the lock).
+## OAuth grant type default and safe rollout
 
-This ensures that under concurrent load, at most **one** `oauth/token` call fires per token expiry — the lock holder generates it, and other processes wait and reuse it.
+Default grant type is now `client_credentials`.
+
+- `client_credentials` is recommended for server-to-server usage.
+- `password` remains supported but is deprecated.
+
+To avoid breaking existing GUI environments that may have implicitly relied on the old default:
+
+1. In every consumer environment, set `SIMPLIFI_API_GRANT_TYPE` explicitly before upgrading.
+2. Confirm the API tier Passport client is allowed to use `client_credentials`.
+3. Upgrade this package.
+
+## Development
+
+```bash
+composer run lint:check
+composer run stan
+composer run test
+```
 
 ## Docs
 
-- [Stage 1 hardening plan](./OAUTH_MODERNISATION_PLAN.md#stage-1--hardening-envelope-contract-smoke-tests)
+- [Modernisation plan](./OAUTH_MODERNISATION_PLAN.md)
 

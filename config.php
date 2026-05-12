@@ -2,7 +2,7 @@
 
 return (function () {
 
-    $VERSION = '1.0.2';
+    $VERSION = '1.1.0';
 
     return [
 
@@ -18,10 +18,9 @@ return (function () {
 
         /**
          * Either "client_credentials" or "password" ("password" is deprecated).
-         * Default to "password" for backwards compatibility.
-         * Even though client_credentials is the recommended method.
+         * client_credentials is the recommended server-to-server grant.
          */
-        'grant_type' => simplifiHqOauthApiLibEnv('SIMPLIFI_API_GRANT_TYPE', 'password'),
+        'grant_type' => simplifiHqOauthApiLibEnv('SIMPLIFI_API_GRANT_TYPE', 'client_credentials'),
 
         /**
          * Client id for OAuth API

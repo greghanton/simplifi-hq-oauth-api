@@ -98,29 +98,29 @@ Two items pushed to Stage 1; two items decided against:
 
 The package keeps the existing `temp_file` mode as a fallback; Redis becomes the documented default via the existing custom callable hook ([src/AccessToken.php:122-148](src/AccessToken.php) — `get`/`set`/`del` callables in `config.php`).
 
-- [ ] **Document the env-var pattern** in `README.md` — `SIMPLIFI_API_ACCESS_TOKEN_STORE_AS=custom`, plus `SIMPLIFI_API_ACCESS_TOKEN_GET/SET/DEL` as JSON-encoded callables (e.g. `["\\App\\Cache\\TokenStore", "get"]`). Include a Laravel example using `Cache::store('redis')`
-- [ ] **Note the `config:cache` gotcha** prominently — [src/helpers.php:19-21](src/helpers.php) falls back to Laravel's `env()`, which returns `null` outside config files in cached-config Laravel apps. Consumers wanting Redis under `config:cache` must wrap `simplifiHqOauthApiEnv()` themselves
-- [ ] **Keep `temp_file` mode unchanged** as the fallback for dev/local — no consumer break
+- [x] **Document the env-var pattern** in `README.md` — `SIMPLIFI_API_ACCESS_TOKEN_STORE_AS=custom`, plus `SIMPLIFI_API_ACCESS_TOKEN_GET/SET/DEL` as JSON-encoded callables (e.g. `["\\App\\Cache\\TokenStore", "get"]`). Include a Laravel example using `Cache::store('redis')`
+- [x] **Note the `config:cache` gotcha** prominently — [src/helpers.php:19-21](src/helpers.php) falls back to Laravel's `env()`, which returns `null` outside config files in cached-config Laravel apps. Consumers wanting Redis under `config:cache` must wrap `simplifiHqOauthApiEnv()` themselves
+- [x] **Keep `temp_file` mode unchanged** as the fallback for dev/local — no consumer break
 
 ### Token refresh mutex — callable hook pattern (✔️)
 
 A new hook pair (`lock`/`unlock`) lives in `config.php` alongside `get`/`set`/`del`. Consumers wire them — Laravel uses `Cache::lock(...)`, Symfony uses `LockFactory`, raw PHP uses Redis `SET NX EX`. **The package itself stays framework-agnostic.**
 
-- [ ] **Add `lock` / `unlock` callable config keys** under `access_token.custom` in [config.php:122-148](config.php). Both optional — when absent, the package falls through to the current behaviour (no mutex)
-- [ ] **Implement the mutex around `AccessToken::generateNewAccessToken()`** in [src/AccessToken.php:82](src/AccessToken.php):
+- [x] **Add `lock` / `unlock` callable config keys** under `access_token.custom` in [config.php:122-148](config.php). Both optional — when absent, the package falls through to the current behaviour (no mutex)
+- [x] **Implement the mutex around `AccessToken::generateNewAccessToken()`** in [src/AccessToken.php:82](src/AccessToken.php):
   1. Try to acquire the lock (~10s TTL — tunable in Stage 4 against real Pulse data)
   2. If acquired: refresh the token, release the lock
   3. If not acquired: wait briefly (1–2s) for the holder, then re-read cache, return the cached token
   4. Only fall through to a fresh fetch if the cache is still empty after the wait — never have multiple parallel refreshes
-- [ ] **Document the contract in README** — when consumers should wire the mutex (any production with parallel calls; especially Inertia partial reloads in Stage 2+)
+- [x] **Document the contract in README** — when consumers should wire the mutex (any production with parallel calls; especially Inertia partial reloads in Stage 2+)
 
 ### Envelope-shape support — both envelopes (✔️)
 
 API Stage 1 introduces the new `{data, meta, links}` envelope behind an Accept-header gate. The package must read both shapes from Stage 1 onward. This is additive — old consumers see no change.
 
-- [ ] **Update [src/ApiResponse.php:365](src/ApiResponse.php) `nextPage()`, `hasNextPage()`, `getCurrentPage()`** — feature-detect `meta`/`links` first, fall back to `paginator.{current_page,total_pages}`. Use a private `getPaginatorShape(): 'meta'|'paginator'|null` helper
-- [ ] **Update [src/ApiResponse.php:98](src/ApiResponse.php) `errors()`** — feature-detect Laravel `{message, errors: {field: [msg]}}` shape vs current `{errors: [...], error: {message}}`. Both flow into the same `[['title' => ...], ...]` output
-- [ ] **No change to `Iterator` impl, `count()`, `success()`** — both envelopes have a top-level `data` key, so iteration and counting already work
+- [x] **Update [src/ApiResponse.php:365](src/ApiResponse.php) `nextPage()`, `hasNextPage()`, `getCurrentPage()`** — feature-detect `meta`/`links` first, fall back to `paginator.{current_page,total_pages}`. Use a private `getPaginatorShape(): 'meta'|'paginator'|null` helper
+- [x] **Update [src/ApiResponse.php:98](src/ApiResponse.php) `errors()`** — feature-detect Laravel `{message, errors: {field: [msg]}}` shape vs current `{errors: [...], error: {message}}`. Both flow into the same `[['title' => ...], ...]` output
+- [x] **No change to `Iterator` impl, `count()`, `success()`** — both envelopes have a top-level `data` key, so iteration and counting already work
 
 ### Smoke tests — Pest 4.x on PHPUnit 12.x (✔️)
 
@@ -155,8 +155,8 @@ The package currently runs **two** HTTP clients: `php-curl-class` (sync, [src/Ap
 
 ### Documentation
 
-- [ ] **Write `README.md` properly** — install, configuration (env vars table), basic usage examples, the `config:cache` gotcha, Redis cache setup, mutex setup, event listener examples
-- [ ] **Update CHANGELOG** for `1.1.0`
+- [x] **Write `README.md` properly** — install, configuration (env vars table), basic usage examples, the `config:cache` gotcha, Redis cache setup, mutex setup, event listener examples
+- [x] **Update CHANGELOG** for `1.1.0`
 
 ### OAuth grant type — coordinated default flip
 
@@ -166,13 +166,13 @@ The only risk is if any consumer environment is silently relying on the `passwor
 
 Pre-flight:
 
-- [ ] **Audit every GUI environment `.env`** for `SIMPLIFI_API_GRANT_TYPE`. For any environment where it is unset, set it explicitly to whatever that environment is currently using (typically `password`) and deploy the GUI. **No behaviour change yet** — the GUI is just declaring what it was doing implicitly
-- [ ] **Confirm the API tier accepts `client_credentials`** — verify the Laravel Passport client used by the GUI has the `client_credentials` grant enabled. If only `password` is enabled, the API tier needs a coordinated config change too
+- [x] **Audit every GUI environment `.env`** for `SIMPLIFI_API_GRANT_TYPE`. For any environment where it is unset, set it explicitly to whatever that environment is currently using (typically `password`) and deploy the GUI. **No behaviour change yet** — the GUI is just declaring what it was doing implicitly
+- [x] **Confirm the API tier accepts `client_credentials`** — verify the Laravel Passport client used by the GUI has the `client_credentials` grant enabled. If only `password` is enabled, the API tier needs a coordinated config change too
 
 Once every consumer environment sets `SIMPLIFI_API_GRANT_TYPE` explicitly:
 
-- [ ] **Flip the default** at [config.php:24](config.php) from `'password'` to `'client_credentials'`. Drop the "Default to 'password' for backwards compatibility" comment
-- [ ] **Update README** to document `client_credentials` as the recommended grant type and `password` as deprecated
+- [x] **Flip the default** at [config.php:24](config.php) from `'password'` to `'client_credentials'`. Drop the "Default to 'password' for backwards compatibility" comment
+- [x] **Update README** to document `client_credentials` as the recommended grant type and `password` as deprecated
 
 ### Tag and pin
 
