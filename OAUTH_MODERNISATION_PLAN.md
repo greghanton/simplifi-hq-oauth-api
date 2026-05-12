@@ -26,6 +26,9 @@ The only consumer-visible change in the entire programme is the GUI's `composer.
 
 ## Stage 0 — Housekeeping ✓
 
+<details>
+<summary>Show stage details</summary>
+
 **Status:** Signed off 2026-05-07. Tag `1.0.0` cut (`1.0.2` patch on top of follow-ups).
 
 **Goal:** dependency hygiene, packaging metadata, dead-code removal, first real semver tag. No behaviour change to the public surface.
@@ -64,6 +67,8 @@ Two items pushed to Stage 1; two items decided against:
 - **Decided against — resolve `VERSION` constant**. The plan's "drift on day one" worry never materialised: the constant has tracked tags by hand through `1.0.0` and `1.0.2`. Removing it would cost the User-Agent version segment for no tangible benefit. Auto-deriving from `git describe` is unreliable post-Composer install. Keeping the constant; manual bump-on-tag discipline is the rule
 - **Decided against — `pint.json` file**. Pint with no config file already defaults to the Laravel preset, which is what the plan called for; an explicit file would be a no-op
 
+</details>
+
 ### Acceptance criteria — outcome
 
 - ✅ `composer.json` has full metadata, real `php-curl-class` constraint, no wildcards
@@ -79,6 +84,9 @@ Two items pushed to Stage 1; two items decided against:
 ---
 
 ## Stage 1 — Hardening, envelope contract, smoke tests
+
+<details>
+<summary>Show stage details</summary>
 
 **Goal:** Redis-default token caching, parallel-call mutex, Pest smoke tests covering **both** the legacy and new API envelopes, vanilla PHPStan blocking from install. Tag `1.1.0`.
 
@@ -172,6 +180,8 @@ Once every consumer environment sets `SIMPLIFI_API_GRANT_TYPE` explicitly:
 - [ ] **Tag `1.1.0`** once smoke tests + PHPStan green in CI
 - [ ] **GUI bumps pin to `^1.1`** (tracked separately in GUI repo)
 
+</details>
+
 ### Acceptance criteria
 
 - Redis-default token cache documented in README; `temp_file` fallback intact
@@ -187,6 +197,9 @@ Once every consumer environment sets `SIMPLIFI_API_GRANT_TYPE` explicitly:
 ---
 
 ## Stage 2 — Pilot watching brief
+
+<details>
+<summary>Show stage details</summary>
 
 **Goal:** Reactive only. The Stage 1 hardening should hold under real Inertia traffic on the GUI's pilot pages (Notifications + Expenses). Reserve allowance for patches.
 
@@ -207,6 +220,8 @@ Once every consumer environment sets `SIMPLIFI_API_GRANT_TYPE` explicitly:
 - No new dependencies
 - No version bumps beyond patch-level
 
+</details>
+
 ### Acceptance criteria
 
 - No regressions reported against the OAuth-API package during the pilot
@@ -215,6 +230,9 @@ Once every consumer environment sets `SIMPLIFI_API_GRANT_TYPE` explicitly:
 ---
 
 ## Stage 3 — Roll-out watching brief
+
+<details>
+<summary>Show stage details</summary>
 
 **Goal:** Same reactive posture as Stage 2, scaled across the GUI's ~24 page-area migrations.
 
@@ -235,6 +253,8 @@ Once every consumer environment sets `SIMPLIFI_API_GRANT_TYPE` explicitly:
 - No PHP version bumps (waits for Stage 4)
 - No envelope-retirement work (waits for API Stage 4 Phase 5)
 
+</details>
+
 ### Acceptance criteria
 
 - Mutex behaviour verified clean under Wave H load before Wave H goes 100%
@@ -243,6 +263,9 @@ Once every consumer environment sets `SIMPLIFI_API_GRANT_TYPE` explicitly:
 ---
 
 ## Stage 4 — Production hardening, legacy envelope retirement
+
+<details>
+<summary>Show stage details</summary>
 
 **Goal:** Promote Pint to blocking, react to Pulse data on mutex behaviour, retire the legacy envelope when API Stage 4 Phase 5 says so. PHP version + static-state audit if scope allows.
 
@@ -285,6 +308,8 @@ Sequencing matters:
 ### Phase 5 — PHP version (optional)
 
 - [ ] **PHP `^8.1` → `^8.4`** if both API ([API_MODERNISATION_PLAN.md:4](API_MODERNISATION_PLAN.md) declares PHP 8.4) and GUI are on 8.4 by Stage 4. PHP 8.1 is EOL November 2025. Bumping forces consumers to 8.4+ but gains language features and security support. Tagged as a minor or major bump depending on whether 8.1 consumers exist in the wild
+
+</details>
 
 ### Acceptance criteria
 
