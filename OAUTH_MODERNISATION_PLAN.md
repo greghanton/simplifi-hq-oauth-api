@@ -94,7 +94,7 @@ Two items pushed to Stage 1; two items decided against:
 
 **Depends on:** Stage 0 complete and `1.0.0` tagged. Coordinated with API Stage 1 — the new envelope appears in production at the end of API Stage 1, so OAuth Stage 1 must ship envelope-shape support **at the same time**.
 
-### Token caching — Redis as default
+### Token caching — Redis as default (✔️)
 
 The package keeps the existing `temp_file` mode as a fallback; Redis becomes the documented default via the existing custom callable hook ([src/AccessToken.php:122-148](src/AccessToken.php) — `get`/`set`/`del` callables in `config.php`).
 
@@ -102,7 +102,7 @@ The package keeps the existing `temp_file` mode as a fallback; Redis becomes the
 - [ ] **Note the `config:cache` gotcha** prominently — [src/helpers.php:19-21](src/helpers.php) falls back to Laravel's `env()`, which returns `null` outside config files in cached-config Laravel apps. Consumers wanting Redis under `config:cache` must wrap `simplifiHqOauthApiEnv()` themselves
 - [ ] **Keep `temp_file` mode unchanged** as the fallback for dev/local — no consumer break
 
-### Token refresh mutex — callable hook pattern
+### Token refresh mutex — callable hook pattern (✔️)
 
 A new hook pair (`lock`/`unlock`) lives in `config.php` alongside `get`/`set`/`del`. Consumers wire them — Laravel uses `Cache::lock(...)`, Symfony uses `LockFactory`, raw PHP uses Redis `SET NX EX`. **The package itself stays framework-agnostic.**
 
@@ -114,7 +114,7 @@ A new hook pair (`lock`/`unlock`) lives in `config.php` alongside `get`/`set`/`d
   4. Only fall through to a fresh fetch if the cache is still empty after the wait — never have multiple parallel refreshes
 - [ ] **Document the contract in README** — when consumers should wire the mutex (any production with parallel calls; especially Inertia partial reloads in Stage 2+)
 
-### Envelope-shape support — both envelopes
+### Envelope-shape support — both envelopes (✔️)
 
 API Stage 1 introduces the new `{data, meta, links}` envelope behind an Accept-header gate. The package must read both shapes from Stage 1 onward. This is additive — old consumers see no change.
 
