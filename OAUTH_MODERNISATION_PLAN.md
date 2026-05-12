@@ -150,9 +150,8 @@ The package has no Laravel dependencies (verified — [composer.json](composer.j
 
 The package currently runs **two** HTTP clients: `php-curl-class` (sync, [src/ApiRequest.php:5](src/ApiRequest.php)) and Guzzle (async/batch, [src/AsyncClient.php](src/AsyncClient.php)). Same job, two libraries, two SSL-verify code paths, two URL builders.
 
-- [ ] **Grep the GUI for `->getCurl(`** — the only public-surface tie to `php-curl-class` is `ApiResponse::getCurl(): Curl` ([src/ApiResponse.php:198](src/ApiResponse.php))
-- [ ] **If zero hits:** schedule consolidation onto Guzzle in **Stage 1 or Stage 2** (your call). Drops `php-curl-class` entirely, unifies `ApiResponse` and `AsyncApiResponse`, eliminates duplicated URL builders. Marked here as Stage 1; defer to Stage 2 if scope-pressed
-- [ ] **If non-zero hits:** document the consumers, tag for follow-up, leave `php-curl-class` in place. Defer consolidation to Stage 4
+- [x] **Grep the GUI for `->getCurl(`** — zero hits confirmed; the only public-surface tie to `php-curl-class` (`ApiResponse::getCurl(): Curl`) had no consumers
+- [x] **Consolidated onto Guzzle in Stage 1.** `php-curl-class` removed from `composer.json` and `composer.lock`. `ApiRequest::request()` now routes through `AsyncClient::request()` (synchronous Guzzle), reusing the same client, URL builder, and SSL-verify path as async/batch. `ApiResponse` and `AsyncApiResponse` unified into a single PSR-7-backed `ApiResponse` (`AsyncApiResponse` kept as a deprecated subclass shim for any stale type hints). `getCurl()` / `getCurlInfo()` / `setCurl()` removed from the public surface. User-Agent header drops the `PHP-Curl-Class/x.x.x` and raw libcurl segments; reports `GuzzleHttp/<major>` instead. CI green: Pint clean, PHPStan level 5 clean (baseline regenerated), Pest 47/47
 
 ### Documentation
 

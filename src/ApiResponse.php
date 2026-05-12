@@ -2,10 +2,15 @@
 
 namespace SimplifiApi;
 
-use Curl\Curl;
+use GuzzleHttp\Exception\RequestException;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * Class ApiResponse
+ *
+ * Unified API response object backed by Guzzle / PSR-7. Used for both
+ * synchronous (ApiRequest::request) and asynchronous (ApiRequest::requestAsync,
+ * batch) calls.
  *
  * @method throw(string $message) alias of throwException()
  *
@@ -13,15 +18,29 @@ use Curl\Curl;
  */
 class ApiResponse implements ApiResponseInterface
 {
-    private Curl $curl;
-
     private array $config;
-
-    private ?bool $forceSuccess = null;
 
     private array $requestOptions;
 
     private float $requestTime;
+
+    private ?ResponseInterface $guzzleResponse = null;
+
+    private ?\Throwable $exception = null;
+
+    private mixed $decodedResponse = null;
+
+    private ?int $httpCode = null;
+
+    private ?string $effectiveUrl = null;
+
+    private bool $hasError = false;
+
+    private string $errorMessage = '';
+
+    private int $errorCode = 0;
+
+    private ?bool $forceSuccess = null;
 
     /**
      * The response created event identifier
@@ -34,65 +53,164 @@ class ApiResponse implements ApiResponseInterface
     private static array $events = [];
 
     /**
-     * ApiResponse constructor.
-     *
-     * @param  array  $config  This is the config array from the config.php file (sometimes some values will be
-     *                         overridden by the user, but usually it is exactly the array from the file
-     * @param  $curl  Curl instance of the php-curl-class/php-curl-class library Curl class
-     * @param  array  $requestOptions  this contains the request method, URL etc @see ApiRequest::$defaultRequestOptions
-     * @param  $timerStart  float the time that the curl request was initiated
+     * Internal constructor — call via the fromGuzzleResponse() / fromException()
+     * factories, or via the test factory in tests/Pest.php.
      */
-    public function __construct(array $config, Curl $curl, array $requestOptions, float $timerStart)
+    public function __construct(array $config, array $requestOptions, float $timerStart)
     {
-        $this->curl = $curl;
         $this->config = $config;
         $this->requestOptions = $requestOptions;
         $this->requestTime = round(microtime(true) - $timerStart, 4);
+    }
 
-        // If the request took > 30 seconds to run then log it
+    /**
+     * Build an ApiResponse from a successful (or 4xx/5xx) Guzzle PSR-7 response.
+     */
+    public static function fromGuzzleResponse(
+        ResponseInterface $response,
+        array $config,
+        array $requestOptions,
+        float $timerStart,
+        ?string $effectiveUrl = null
+    ): self {
+        $instance = new self($config, $requestOptions, $timerStart);
+        $instance->guzzleResponse = $response;
+        $instance->httpCode = $response->getStatusCode();
+        $instance->effectiveUrl = $effectiveUrl ?? AsyncClient::buildUrl($requestOptions, $config);
+
+        // Decode the response body
+        $body = (string) $response->getBody();
+        $contentType = $response->getHeaderLine('Content-Type');
+
+        if (str_contains($contentType, 'application/json') || ($requestOptions['response-type'] ?? 'json') === 'json') {
+            $decoded = json_decode($body);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $instance->decodedResponse = $decoded;
+            } else {
+                $instance->decodedResponse = $body;
+            }
+        } else {
+            $instance->decodedResponse = $body;
+        }
+
+        // Flag 4xx / 5xx as errors
+        $statusCode = $response->getStatusCode();
+        if ($statusCode >= 400) {
+            $instance->hasError = true;
+            $instance->errorCode = $statusCode;
+            $instance->errorMessage = $response->getReasonPhrase();
+        }
+
+        $instance->postConstruct();
+
+        return $instance;
+    }
+
+    /**
+     * Build an ApiResponse from a thrown exception (connection error, timeout, etc.).
+     */
+    public static function fromException(
+        \Throwable $exception,
+        array $config,
+        array $requestOptions,
+        float $timerStart,
+        ?string $effectiveUrl = null
+    ): self {
+        $instance = new self($config, $requestOptions, $timerStart);
+        $instance->exception = $exception;
+        $instance->effectiveUrl = $effectiveUrl ?? AsyncClient::buildUrl($requestOptions, $config);
+        $instance->hasError = true;
+        $instance->errorCode = (int) $exception->getCode();
+        $instance->errorMessage = $exception->getMessage();
+        $instance->httpCode = 0;
+        $instance->decodedResponse = null;
+
+        // If the exception carries a response, prefer that
+        if ($exception instanceof RequestException && $exception->hasResponse()) {
+            $response = $exception->getResponse();
+            if ($response !== null) {
+                $instance->guzzleResponse = $response;
+                $instance->httpCode = $response->getStatusCode();
+                $body = (string) $response->getBody();
+                $decoded = json_decode($body);
+                $instance->decodedResponse = json_last_error() === JSON_ERROR_NONE ? $decoded : $body;
+            }
+        }
+
+        $instance->postConstruct();
+
+        return $instance;
+    }
+
+    /**
+     * Build an ApiResponse directly from a decoded body and metadata, without
+     * a real HTTP round-trip. Used by the test factory and by edge cases (auth
+     * pre-flight failures) that need to surface as a response object.
+     */
+    public static function fromDecoded(
+        mixed $decodedResponse,
+        array $config,
+        array $requestOptions,
+        float $timerStart,
+        int $httpCode = 200,
+        ?string $effectiveUrl = null,
+        bool $error = false,
+        int $errorCode = 0,
+        string $errorMessage = ''
+    ): self {
+        $instance = new self($config, $requestOptions, $timerStart);
+        $instance->decodedResponse = $decodedResponse;
+        $instance->httpCode = $httpCode;
+        $instance->effectiveUrl = $effectiveUrl;
+        $instance->hasError = $error || $httpCode >= 400;
+        $instance->errorCode = $errorCode;
+        $instance->errorMessage = $errorMessage;
+
+        $instance->postConstruct();
+
+        return $instance;
+    }
+
+    /**
+     * Common post-construction work (slow-request log, response-created event).
+     */
+    private function postConstruct(): void
+    {
         if ($this->requestTime > 30) {
             $this->logRequest("This request took > 30 seconds to run ({$this->requestTime}s).");
         }
 
-        // If the URL > 80000 characters log it
-        if (strlen($this->getRequestUrl()) > 80000) {
-            $this->logRequest('This requests url is > 80000 characters in length ('.strlen($this->getRequestUrl()).').');        // Max url length could be as little as 2,048
+        $url = $this->getRequestUrl();
+        if (is_string($url) && strlen($url) > 80000) {
+            $this->logRequest('This requests url is > 80000 characters in length ('.strlen($url).').');
         }
 
-        // Fire the response created event
         $this->fireEvent(self::EVENT_RESPONSE_CREATED, [$this]);
-
-        return $this;
     }
 
     /**
      * Check if there was an error with the request e.g. a 404 occurred
-     * Will return true if HTTP response code is not in 4xx or 5xx AND there was no curl_errno() e.g. 404
-     *
-     * NOTE: The Uber Accounting API is set up so that if an errors occur, it will return a status code of not 200
-     *      and will set the "errors" array element
      */
     public function success(): bool
     {
         if ($this->forceSuccess !== null) {
             return $this->forceSuccess;
-        } else {
-            return ! $this->curl->error;
         }
+
+        return ! $this->hasError;
     }
 
     /**
-     * Get the raw response (e.g. if 'Content-Type:application/json' then a json_decode() result is returned)
+     * Get the raw response (e.g. if Content-Type is application/json then a
+     * json_decode() result is returned)
      */
     public function response(): mixed
     {
-        return $this->curl->response;
+        return $this->decodedResponse;
     }
 
     /**
      * Return an array of errors that occurred OR empty array if no errors occurred.
-     * The end point may return an array of errors if it finds an error
-     * Or if there was an HTTP error then return that
      *
      * Supports both legacy and new API envelope shapes:
      * - Legacy: {errors: [...], error: {message}}
@@ -149,20 +267,23 @@ class ApiResponse implements ApiResponseInterface
         } else {
             // Legacy format: {errors: [...object], error: {message}}
             if (array_key_exists('errors', $response)) {
-                $errors = array_merge($errors, json_decode(json_encode($this->response()->errors ?? []), true));
+                $decoded = json_decode(json_encode($response['errors'] ?? []), true);
+                if (is_array($decoded)) {
+                    $errors = array_merge($errors, $decoded);
+                }
             }
             if (array_key_exists('error', $response)) {
-                $temp = $response;
+                $error = $response['error'];
                 $errors[] = [
-                    'title' => isset($temp['error']->message) ? $temp['error']->message : $temp['error'],
+                    'title' => is_object($error) && isset($error->message) ? $error->message : $error,
                 ];
             }
         }
 
-        // If no errors found in response but request failed, add curl error
-        if (count($errors) === 0 && $this->curl->error) {
+        // If no errors found in response but request failed, add a transport-level error
+        if (count($errors) === 0 && $this->hasError) {
             $errors[] = [
-                'title' => $this->curl->errorCode.': '.$this->curl->errorMessage.' '.
+                'title' => $this->errorCode.': '.$this->errorMessage.' '.
                     (substr(json_encode($this->serialise()['response'] ?? ''), 0, 300)),
             ];
         }
@@ -179,7 +300,7 @@ class ApiResponse implements ApiResponseInterface
     {
         $errors = $this->getSimpleErrorsArray();
         if ($escape) {
-            array_walk($errors, fn ($value) => htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8'));
+            array_walk($errors, fn (&$value) => $value = htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8'));
         }
 
         return implode($glue, $errors);
@@ -197,7 +318,7 @@ class ApiResponse implements ApiResponseInterface
         $errors = $this->errors();
         $response = [];
         foreach ($errors as $error) {
-            $response[] = $error['title'];
+            $response[] = $error['title'] ?? 'Unknown error';
         }
 
         // If no error messages were found but the request was not a success then add a default error message.
@@ -211,13 +332,11 @@ class ApiResponse implements ApiResponseInterface
     /**
      * Throw Exception
      *
-     * @param  $message  string Message to throw
-     *
      * @throws \Exception
      */
     public function throwException(string $message): void
     {
-        if ($this->config['APP_ENV'] === 'local') {
+        if (($this->config['APP_ENV'] ?? null) === 'local') {
             $this->dd();
         } else {
             $this->logRequest($message);
@@ -240,49 +359,24 @@ class ApiResponse implements ApiResponseInterface
             $debugTrace = count($debugTrace) > 0 ? $debugTrace[0] : null;
 
             throw new \Exception('Call to undefined method '.__CLASS__.'::'.$method.
-                '() in '.($debugTrace ? $debugTrace['file'] : '').':'.($debugTrace ? $debugTrace['line'] : '')."\n");
+                '() in '.($debugTrace ? ($debugTrace['file'] ?? '') : '').':'.($debugTrace ? ($debugTrace['line'] ?? '') : '')."\n");
         }
     }
 
     /**
-     * Return the Curl object
-     *
-     * @see Curl
-     */
-    public function getCurl(): Curl
-    {
-        return $this->curl;
-    }
-
-    /**
-     * Just like php's native curl_getinfo()
-     *
-     * @param  int  $opt  see http://php.net/manual/en/function.curl-getinfo.php
-     *
-     * @see http://php.net/manual/en/function.curl-getinfo.php
-     */
-    public function getCurlInfo(int $opt): mixed
-    {
-        return $this->curl->getInfo($opt);
-    }
-
-    /**
-     * Get the full URL of the request
-     * useful for debugging
+     * Get the full URL of the request (useful for debugging)
      */
     public function getRequestUrl(): mixed
     {
-        return $this->getCurlInfo(CURLINFO_EFFECTIVE_URL);
+        return $this->effectiveUrl;
     }
 
     /**
      * Get the http response code e.g. 200 for success
-     *
-     * @return int
      */
     public function getHttpCode(): mixed
     {
-        return $this->getCurlInfo(CURLINFO_HTTP_CODE);
+        return $this->httpCode;
     }
 
     /**
@@ -290,14 +384,30 @@ class ApiResponse implements ApiResponseInterface
      */
     public function getMethod(): string
     {
-        return $this->requestOptions['method'];
+        return strtoupper($this->requestOptions['method'] ?? 'GET');
     }
 
     /**
-     * Serialise the object
-     * useful for debugging
+     * Get the underlying Guzzle PSR-7 response (if any).
+     * May be null if the response was synthesised from an exception or decoded body.
+     */
+    public function getGuzzleResponse(): ?ResponseInterface
+    {
+        return $this->guzzleResponse;
+    }
+
+    /**
+     * Get request time in seconds
+     */
+    public function getRequestTime(): float
+    {
+        return $this->requestTime;
+    }
+
+    /**
+     * Serialise the object (useful for debugging)
      *
-     * @param  $anonymise  boolean Remove sensitive info from the result
+     * @param  bool  $anonymise  Remove sensitive info from the result
      */
     public function serialise(bool $anonymise = true): array
     {
@@ -336,15 +446,7 @@ class ApiResponse implements ApiResponseInterface
     }
 
     /**
-     * @see $curl
-     */
-    public function setCurl(Curl $curl): void
-    {
-        $this->curl = $curl;
-    }
-
-    /**
-     * @param  $anonymise  boolean Remove sensitive info from the result
+     * @param  bool  $anonymise  Remove sensitive info from the result
      *
      * @see requestOptions
      */
@@ -353,8 +455,8 @@ class ApiResponse implements ApiResponseInterface
         $options = $this->requestOptions;
 
         if ($anonymise) {
-            // In most cases the user doesn't need/want the Authorization header. Also; there could be a security concer
-            // if it ends up in the logs "Authorization": "Bearer eyJ0eXAiO...
+            // In most cases the user doesn't need/want the Authorization header. Also; there could be a security concern
+            // if it ends up in the logs "Authorization": "Bearer eyJ0eXAiO..."
             if (! empty($options['headers']['Authorization'])) {
                 $options['headers']['Authorization'] = preg_replace('/Bearer (.*)/i', 'Bearer ### REDACTED ###', $options['headers']['Authorization']);
             }
@@ -372,15 +474,10 @@ class ApiResponse implements ApiResponseInterface
     }
 
     /**
-     * Magic method to get a value of a request
+     * Magic method to get a value of a response property
      * e.g. $response->data
      * e.g. $response->data->id
      * e.g. $response->paginator->total_count
-     *
-     * @param  string  $name
-     * @return mixed
-     *
-     * @see property()
      */
     public function __get($name)
     {
@@ -389,35 +486,21 @@ class ApiResponse implements ApiResponseInterface
 
     /**
      * Magic method to check the isset() of a property
-     * e.g. isset($response->data) would always return false without this function
-     * e.g. with this function isset($response->data) returns true if it is set
-     *
-     * @return mixed
-     *
-     * @see __get()
      */
     public function __isset($prop)
     {
-        if (array_key_exists($prop, (array) $this->response())) { // Cannot use isset() here because it fails on NULL
-            return true;
-        } else {
-            return false;
-        }
+        return array_key_exists($prop, (array) $this->response());
     }
 
     /**
      * Return an ApiResponse for the next page of this request.
-     * This should only be used for paginated results.
      * Returns FALSE if request is not paginated or there are no more pages
-     *
-     * @return bool|ApiResponse FALSE: If there are no more pages.
      *
      * @throws \Exception
      */
-    public function nextPage(): ApiResponse|false
+    public function nextPage(): self|false
     {
         if ($this->hasNextPage()) {
-            // modify the request so it will get the next page
             $requestOptions = $this->requestOptions;
             $requestOptions['data']['page'] = $this->getCurrentPage() + 1;
 
@@ -427,15 +510,13 @@ class ApiResponse implements ApiResponseInterface
             }
 
             return $response;
-
-        } else {
-            return false;
         }
+
+        return false;
     }
 
     /**
      * Does this request have another page?
-     * Should only be called on paginated endpoint responses
      * Supports both legacy (paginator) and new (meta/links) envelope shapes
      */
     private function hasNextPage(): bool
@@ -469,12 +550,10 @@ class ApiResponse implements ApiResponseInterface
     {
         $response = (array) $this->response();
 
-        // Check for new envelope shape (meta/links)
         if (array_key_exists('meta', $response) && ! empty($response['meta'])) {
             return 'meta';
         }
 
-        // Check for legacy envelope shape (paginator)
         if (array_key_exists('paginator', $response) && ! empty($response['paginator'])) {
             return 'paginator';
         }
@@ -484,67 +563,37 @@ class ApiResponse implements ApiResponseInterface
 
     /**
      * This will do as many requests as required to fetch every page's items into a single array and return that array
-     *
-     * e.g. of usage:
-     *
-     * function allPages() {
-     *
-     *     if ($this->success()) {
-     *         $return = $this->fetchAllPageData();
-     *         if (FALSE !== $return) {
-     *             return $return;
-     *         } else {
-     *             throw new \Exception("Unknown error while fetching all pages of paginated API response.");
-     *         }
-     *     } else {
-     *         throw new \Exception("Unknown error on paginated response. " . $response->errorsToString());
-     *     }
-     *
-     * }
      */
     protected function fetchAllPageData(): array
     {
-
         $tempResponse = $this;
         $allItems = [];
 
         do {
-
             foreach ($tempResponse as $value) {
                 $allItems[] = $value;
             }
-
         } while ($tempResponse = $tempResponse->nextPage());
 
         return $allItems;
-
     }
 
     /**
      * This will do as many requests as required to fetch every page's items into a single array and return that array
-     * This function is the same as $this->fetchAllPageData() with a little additional error checking
      *
      * @see fetchAllPageData
      */
     public function allPages(): array
     {
-
         if ($this->success()) {
-            $return = $this->fetchAllPageData();
-            if ($return !== false) {
-                return $return;
-            } else {
-                throw new \Exception('Unknown error while fetching all pages of paginated api response.');
-            }
-        } else {
-            throw new \Exception('Unknown error on paginated response. '.$this->errorsToString());
+            return $this->fetchAllPageData();
         }
 
+        throw new \Exception('Unknown error on paginated response. '.$this->errorsToString());
     }
 
     /**
      * Get the current page number
-     * Should only be called on paginated endpoint responses
      * Supports both legacy (paginator) and new (meta) envelope shapes
      *
      * @throws \Exception when attempting to get the page number of a non-paginated response
@@ -574,10 +623,8 @@ class ApiResponse implements ApiResponseInterface
 
     /**
      * Basically the same as __get() except you can get sub properties
-     * e.g.
-     * $currentPage = $this->property('paginator', 'current_page')
+     * e.g. $currentPage = $this->property('paginator', 'current_page')
      *
-     * @param string ... any number of parameter names
      * @return mixed NULL: if the property could not be found
      *
      * @see __get()
@@ -586,18 +633,15 @@ class ApiResponse implements ApiResponseInterface
     {
         $args = func_get_args();
         $response = $this->response();
+
         foreach ($args as $value) {
-
-            if (array_key_exists($value, (array) $response)) { // Cannot use isset() here because it fails on NULL
-                $response = $response->{$value};
+            if (array_key_exists($value, (array) $response)) {
+                $response = is_object($response) ? $response->{$value} : $response[$value];
             } else {
-
                 $this->triggerError("Undefined property ($value)", debug_backtrace(), __CLASS__, __FUNCTION__, func_get_args());
-                $response = null;
-                break;
 
+                return null;
             }
-
         }
 
         return $response;
@@ -606,17 +650,13 @@ class ApiResponse implements ApiResponseInterface
     /**
      * Like PHPs native trigger_error($string, E_USER_NOTICE) function except the file and line number will be from the closest
      * debug_backtrace() value outside this object
-     *
-     * @param  array  $debugBackTrace  debug_backtrace()
-     * @param  array  $functionArgs  func_get_args()
      */
     private function triggerError(string $message, array $debugBackTrace, string $class, string $functionName, array $functionArgs): void
     {
-
         $externalTraceId = 0;
         while (true) {
             if (isset($debugBackTrace[$externalTraceId + 1]['class'])) {
-                if ($debugBackTrace[$externalTraceId]['class'] === $class) {
+                if (($debugBackTrace[$externalTraceId]['class'] ?? null) === $class) {
                     if (count($debugBackTrace) > $externalTraceId + 1) {
                         $externalTraceId++;
 
@@ -641,29 +681,21 @@ class ApiResponse implements ApiResponseInterface
         trigger_error(
             $message.
             " in {$functionName}(".implode(', ', $functionArgs).')'.
-            " in {$debugBackTrace[0]['file']}:{$debugBackTrace[0]['line']}".
-            " called from {$debugBackTrace[$externalTraceId]['file']}:{$debugBackTrace[$externalTraceId]['line']}",
+            ' in '.($debugBackTrace[0]['file'] ?? '').':'.($debugBackTrace[0]['line'] ?? '').
+            ' called from '.($debugBackTrace[$externalTraceId]['file'] ?? '').':'.($debugBackTrace[$externalTraceId]['line'] ?? ''),
             E_USER_NOTICE);
-
     }
 
     /**
-     * Die and dump $this->serialise()
-     * Functions similarly to Laravels dd() function
-     * useful for debugging
-     * NOTE: WILL CALL die()
-     *
-     * @see serialise()
+     * Die and dump $this->serialise() (Laravel-style)
      */
     public function dd($prettyHtml = true, $addAdditionalDataToHtml = true): void
     {
-        // If error is html just output the html because chances are its a nicly formatted laravel exception
         if ($prettyHtml) {
             $doctypeString = '<!DOCTYPE html>';
             if (is_string($this->response()) &&
                 substr($this->response(), 0, strlen($doctypeString)) === $doctypeString
             ) {
-
                 $respond = $this->response();
 
                 if ($addAdditionalDataToHtml) {
@@ -682,10 +714,7 @@ class ApiResponse implements ApiResponseInterface
     }
 
     /**
-     * Check if string is valid JSON
-     *
-     * @param  mixed  $string  string that we want to check if it is JSON format or not
-     * @return bool true if the $string passed in is JSON
+     * Check if a value is a JSON-encoded string
      */
     private function isJson(mixed $string): bool
     {
@@ -700,8 +729,6 @@ class ApiResponse implements ApiResponseInterface
 
     /**
      * Magic method called by var_dump() on this object
-     *
-     * @link http://php.net/manual/en/language.oop5.magic.php#object.debuginfo
      */
     public function __debugInfo()
     {
@@ -710,16 +737,6 @@ class ApiResponse implements ApiResponseInterface
 
     /**
      * Magic method used by json_encode($apiResponse)
-     * NOTE: the implements \JsonSerializable on this class
-     *
-     * Specify data which should be serialized to JSON
-     *
-     * @link http://php.net/manual/en/jsonserializable.jsonserialize.php
-     *
-     * @return mixed data which can be serialized by <b>json_encode</b>,
-     *               which is a value of any type other than a resource.
-     *
-     * @since 5.4.0
      */
     public function jsonSerialize(): mixed
     {
@@ -733,127 +750,85 @@ class ApiResponse implements ApiResponseInterface
      */
     public function count(): int
     {
-        if (is_array($this->response()->data)) {
-            return count($this->response()->data);
-        } else {
-            throw new \Exception('Error: Attempting to count a non countable object.');
+        $response = $this->response();
+        $data = is_object($response) ? ($response->data ?? null) : (is_array($response) ? ($response['data'] ?? null) : null);
+        if (is_array($data)) {
+            return count($data);
         }
+
+        throw new \Exception('Error: Attempting to count a non countable object.');
     }
 
     /**************** START Iterator methods ****************/
 
-    /**
-     * Is the api response iterable?
-     *
-     * @return bool
-     */
-    private function dataIsIterable()
+    private function iterableData(): array
     {
-        return is_array($this->response()->data);
+        $response = $this->response();
+        $data = is_object($response) ? ($response->data ?? null) : (is_array($response) ? ($response['data'] ?? null) : null);
+        if (! is_array($data)) {
+            throw new \Exception('Invalid argument api response is not iterable.');
+        }
+
+        return $data;
     }
 
-    /**
-     * Throw an exception if response data is not an array
-     *
-     * @throws \Exception
-     */
-    private function iterableCheck()
+    public function rewind(): void
     {
-        if (! $this->dataIsIterable()) {
-            throw new \Exception('Invalid argument api response is not iterable.');
+        // Trigger validation; iteration uses references back into the response object's data.
+        $this->iterableData();
+        $response = $this->response();
+        if (is_object($response) && isset($response->data) && is_array($response->data)) {
+            reset($response->data);
         }
     }
 
-    /**
-     * Rewind the Iterator to the first element
-     *
-     * @link http://php.net/manual/en/iterator.rewind.php
-     *
-     * @return void Any returned value is ignored.
-     *
-     * @since 5.0.0
-     */
-    public function rewind(): void
-    {
-        $this->iterableCheck();
-        reset($this->response()->data);
-    }
-
-    /**
-     * Return the current element
-     *
-     * @link http://php.net/manual/en/iterator.current.php
-     *
-     * @return mixed Can return any type.
-     *
-     * @since 5.0.0
-     */
     public function current(): mixed
     {
-        $this->iterableCheck();
+        $this->iterableData();
+        $response = $this->response();
 
-        return current($this->response()->data);
+        return is_object($response) ? current($response->data) : false;
     }
 
-    /**
-     * Return the key of the current element
-     *
-     * @link http://php.net/manual/en/iterator.key.php
-     *
-     * @return mixed scalar on success, or null on failure.
-     *
-     * @since 5.0.0
-     */
     public function key(): mixed
     {
-        $this->iterableCheck();
+        $this->iterableData();
+        $response = $this->response();
 
-        return key($this->response()->data);
+        return is_object($response) ? key($response->data) : null;
     }
 
-    /**
-     * Move forward to next element
-     *
-     * @link http://php.net/manual/en/iterator.next.php
-     *
-     * @ return void Any returned value is ignored.
-     *
-     * @since 5.0.0
-     */
     public function next(): void
     {
-        $this->iterableCheck();
-        next($this->response()->data);
+        $this->iterableData();
+        $response = $this->response();
+        if (is_object($response) && isset($response->data) && is_array($response->data)) {
+            next($response->data);
+        }
     }
 
-    /**
-     * Checks if current position is valid
-     *
-     * @link http://php.net/manual/en/iterator.valid.php
-     *
-     * @return bool The return value will be casted to boolean and then evaluated.
-     *              Returns true on success or false on failure.
-     *
-     * @since 5.0.0
-     */
     public function valid(): bool
     {
-        $this->iterableCheck();
-        $key = key($this->response()->data);
+        $this->iterableData();
+        $response = $this->response();
+        if (! is_object($response)) {
+            return false;
+        }
+        $key = key($response->data);
 
         return $key !== null && $key !== false;
     }
 
     /**************** END Iterator methods ****************/
 
-    private function logRequest($message): void
+    private function logRequest(string $message): void
     {
         $serialisedRequest = $this->serialise();
 
         // Remove the authentication header
         unset($serialisedRequest['requestOptions']['headers']['Authorization']);
 
-        // Some parts of the request can be massive so lets truncate all to 500 characters
+        // Some parts of the request can be massive so let's truncate to 500 characters
         array_walk_recursive($serialisedRequest, function (&$v) {
             if (is_string($v) && strlen($v) > 500) {
                 $v = substr($v, 0, 500).'<TRUNCATED '.strlen($v).'>';
@@ -868,17 +843,11 @@ class ApiResponse implements ApiResponseInterface
      */
     public static function getCallerFromBacktrace(array $backtrace, string $file = __FILE__, string $class = __CLASS__): ?array
     {
-
-        // NOTE: Php will not populate all elements of a frame every time
-        // e.g. 'line' will often be missing from a frame
-        // @see https://www.php.net/manual/en/function.debug-backtrace.php
-        // @see https://stackoverflow.com/questions/4581969/why-is-debug-backtrace-not-including-line-number-sometimes
-
         if (count($backtrace) === 0) {
             return null;
         }
 
-        // Filter out all frame that are in the vendor directory
+        // Filter out frames in vendor or in this class/file
         $filteredBacktrace = array_filter($backtrace, function ($frame) use ($class, $file) {
             return ! isset($frame['file']) ||
                 (
@@ -893,11 +862,8 @@ class ApiResponse implements ApiResponseInterface
             $backtrace = $filteredBacktrace;
         }
 
-        // Transform the backtrace into a string
         $arrayBacktrace = array_map(function ($frame) {
             if (isset($frame['file']) && isset($frame['line'])) {
-
-                // Remove the document root from the url as it's unnecessary
                 $file = isset($_SERVER['DOCUMENT_ROOT']) ?
                     preg_replace('/^'.preg_quote(realpath($_SERVER['DOCUMENT_ROOT'].'/..'), '/').'/', '', $frame['file']) :
                     $frame['file'];
@@ -914,15 +880,11 @@ class ApiResponse implements ApiResponseInterface
 
         $arrayBacktrace = array_filter($arrayBacktrace);
 
-        // Only keep the first three stacks
         return array_slice($arrayBacktrace, 0, 3);
     }
 
     /**
      * Add an event listener
-     *
-     * @param  string  $eventName  e.g. "beforeRequest"
-     * @param  \Closure  $callback  function to be called
      */
     public static function addEventListener(string $eventName, \Closure $callback): void
     {
@@ -931,9 +893,6 @@ class ApiResponse implements ApiResponseInterface
 
     /**
      * Trigger an event loaded by addEventListener
-     *
-     * @param  string  $eventName  The event identifier to trigger
-     * @param  array  $callbackParameters  The parameters to send to the callback
      */
     public static function fireEvent(string $eventName, array $callbackParameters): void
     {

@@ -9,7 +9,7 @@ use GuzzleHttp\RequestOptions;
 use Psr\Http\Message\ResponseInterface;
 
 /**
- * Async HTTP client using Guzzle for concurrent API requests
+ * Guzzle-backed HTTP client used by both sync and async paths.
  */
 class AsyncClient
 {
@@ -26,7 +26,7 @@ class AsyncClient
             self::$config = $config;
             self::$client = new Client([
                 'base_uri' => $config['url-base'] ?? '',
-                'timeout' => $config['CURLOPT_TIMEOUT'] ?? 30,
+                'timeout' => $config['CURLOPT_TIMEOUT'] ?? 0,
                 'verify' => $config['ssl_verify'] ?? true,
                 'http_errors' => false, // Don't throw on 4xx/5xx - let ApiResponse handle it
                 'headers' => array_merge(
@@ -77,7 +77,9 @@ class AsyncClient
                     }
                 }
 
-                if ($isJson) {
+                if (is_string($data)) {
+                    $guzzleOptions[RequestOptions::BODY] = $data;
+                } elseif ($isJson) {
                     $guzzleOptions[RequestOptions::JSON] = $data;
                 } else {
                     $guzzleOptions[RequestOptions::FORM_PARAMS] = $data;
@@ -99,10 +101,10 @@ class AsyncClient
     public static function buildUrl(array $options, array $config): string
     {
         if (isset($options['url-absolute'])) {
-            return $config['url-base'].self::urlToString($options['url-absolute']);
+            return ($config['url-base'] ?? '').self::urlToString($options['url-absolute']);
         }
 
-        return $config['url-base'].($config['url-version'] ?? '').self::urlToString($options['url'] ?? '');
+        return ($config['url-base'] ?? '').($config['url-version'] ?? '').self::urlToString($options['url'] ?? '');
     }
 
     /**
@@ -151,10 +153,28 @@ class AsyncClient
     }
 
     /**
+     * Make a synchronous request via Guzzle.
+     */
+    public static function request(array $options, array $config): ApiResponse
+    {
+        $client = self::getClient($config);
+        $method = strtoupper($options['method'] ?? 'GET');
+        $url = self::buildUrl($options, $config);
+        $guzzleOptions = self::buildRequestOptions($options, $config);
+        $timerStart = $options['__timerStart'] ?? microtime(true);
+
+        try {
+            $response = $client->request($method, $url, $guzzleOptions);
+
+            return ApiResponse::fromGuzzleResponse($response, $config, $options, $timerStart, $url);
+        } catch (\Throwable $e) {
+            return ApiResponse::fromException($e, $config, $options, $timerStart, $url);
+        }
+    }
+
+    /**
      * Make an async request
      *
-     * @param  array  $options  Request options (url, method, data, headers, etc.)
-     * @param  array  $config  API configuration
      * @return PromiseInterface Promise that resolves to ApiResponse
      */
     public static function requestAsync(array $options, array $config): PromiseInterface
@@ -167,17 +187,16 @@ class AsyncClient
 
         return $client->requestAsync($method, $url, $guzzleOptions)
             ->then(
-                function (ResponseInterface $response) use ($config, $options, $timerStart) {
-                    return AsyncApiResponse::fromGuzzleResponse($response, $config, $options, $timerStart);
+                function (ResponseInterface $response) use ($config, $options, $timerStart, $url) {
+                    return ApiResponse::fromGuzzleResponse($response, $config, $options, $timerStart, $url);
                 },
-                function (\Throwable $e) use ($config, $options, $timerStart) {
+                function (\Throwable $e) use ($config, $options, $timerStart, $url) {
                     // Handle request errors - still return an ApiResponse
                     if (method_exists($e, 'getResponse') && $e->getResponse()) {
-                        return AsyncApiResponse::fromGuzzleResponse($e->getResponse(), $config, $options, $timerStart);
+                        return ApiResponse::fromGuzzleResponse($e->getResponse(), $config, $options, $timerStart, $url);
                     }
 
-                    // No response (connection error, timeout, etc.)
-                    return AsyncApiResponse::fromException($e, $config, $options, $timerStart);
+                    return ApiResponse::fromException($e, $config, $options, $timerStart, $url);
                 }
             );
     }
@@ -185,9 +204,7 @@ class AsyncClient
     /**
      * Execute multiple requests concurrently
      *
-     * @param  array  $requests  Array of request options
-     * @param  array  $config  API configuration
-     * @return array Array of ApiResponse objects (in same order as requests)
+     * @return ApiResponse[]
      */
     public static function batch(array $requests, array $config): array
     {
@@ -207,7 +224,7 @@ class AsyncClient
                 $responses[$key] = $result['value'];
             } else {
                 // Promise was rejected - create error response
-                $responses[$key] = AsyncApiResponse::fromException(
+                $responses[$key] = ApiResponse::fromException(
                     $result['reason'],
                     $config,
                     $requests[$key],
@@ -222,14 +239,10 @@ class AsyncClient
     /**
      * Execute multiple requests concurrently with a concurrency limit
      *
-     * @param  array  $requests  Array of request options
-     * @param  array  $config  API configuration
-     * @param  int  $concurrency  Maximum number of concurrent requests
-     * @return array Array of ApiResponse objects
+     * @return ApiResponse[]
      */
     public static function batchWithConcurrency(array $requests, array $config, int $concurrency = 5): array
     {
-        $client = self::getClient($config);
         $responses = [];
 
         // Process in chunks based on concurrency limit
