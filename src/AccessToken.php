@@ -81,51 +81,140 @@ class AccessToken
      */
     private static function generateNewAccessToken(bool $andCache = false): ApiResponse|string
     {
-        $apiResponse = ApiRequest::request([
-            'method' => 'POST',
-            'url-absolute' => 'oauth/token',
-            'with-access-token' => false,
-            'data' => array_filter([
-                'grant_type' => self::$config['grant_type'],
-                'client_id' => self::$config['client_id'],
-                'client_secret' => self::$config['client_secret'],
-                'username' => self::$config['username'],
-                'password' => self::$config['password'],
-                'scope' => self::$config['scope'],
+        // Attempt mutex protection if lock/unlock callables are configured
+        $lockAcquired = false;
+        if ($andCache && self::hasMutexCallables()) {
+            $lockAcquired = self::tryAcquireLock();
 
-                // 'grant_type'    => 'client_credentials',
-                // 'client_id'     => self::$config['client_id'],
-                // 'client_secret' => self::$config['client_secret'],
-            ]),
-        ]);
-        //        $apiResponse->dd();
-        if ($apiResponse->success()) {
+            if (! $lockAcquired) {
+                // Another process holds the lock; wait briefly and check cache again
+                $cachedToken = self::waitForCacheRefresh();
+                if ($cachedToken !== null) {
+                    return $cachedToken;
+                }
+                // Cache still empty; fall through to fetch a new token without holding lock
+            }
+        }
 
-            $data = $apiResponse->response();
+        try {
+            $apiResponse = ApiRequest::request([
+                'method' => 'POST',
+                'url-absolute' => 'oauth/token',
+                'with-access-token' => false,
+                'data' => array_filter([
+                    'grant_type' => self::$config['grant_type'],
+                    'client_id' => self::$config['client_id'],
+                    'client_secret' => self::$config['client_secret'],
+                    'username' => self::$config['username'],
+                    'password' => self::$config['password'],
+                    'scope' => self::$config['scope'],
 
-            if (! isset($data->access_token)) {
-                // ERROR access_token was not set in the response
-                $apiResponse->setSuccess(false);
+                    // 'grant_type'    => 'client_credentials',
+                    // 'client_id'     => self::$config['client_id'],
+                    // 'client_secret' => self::$config['client_secret'],
+                ]),
+            ]);
+            //        $apiResponse->dd();
+            if ($apiResponse->success()) {
 
+                $data = $apiResponse->response();
+
+                if (! isset($data->access_token)) {
+                    // ERROR access_token was not set in the response
+                    $apiResponse->setSuccess(false);
+
+                    return $apiResponse;
+                }
+
+                // Set expires_at
+                $data->expires_at = time() + $data->expires_in;
+
+                if ($andCache) {
+
+                    self::cacheAccessToken((array) $data);
+
+                }
+
+                // SUCCESS
+                return $data->access_token;
+
+            } else {
+                // ERROR during request
                 return $apiResponse;
             }
-
-            // Set expires_at
-            $data->expires_at = time() + $data->expires_in;
-
-            if ($andCache) {
-
-                self::cacheAccessToken((array) $data);
-
+        } finally {
+            // Always release lock if we acquired it
+            if ($lockAcquired) {
+                self::releaseLock();
             }
-
-            // SUCCESS
-            return $data->access_token;
-
-        } else {
-            // ERROR during request
-            return $apiResponse;
         }
+    }
+
+    /**
+     * Check if mutex lock/unlock callables are configured
+     */
+    private static function hasMutexCallables(): bool
+    {
+        if ((self::$config['access_token']['store_as'] ?? null) !== 'custom') {
+            return false;
+        }
+
+        $lock = self::$config['access_token']['custom']['lock'] ?? null;
+        $unlock = self::$config['access_token']['custom']['unlock'] ?? null;
+
+        return ! empty($lock) && ! empty($unlock);
+    }
+
+    /**
+     * Try to acquire the token-refresh lock (~10s TTL)
+     *
+     * @return bool True if lock was acquired, false if another process holds it
+     */
+    private static function tryAcquireLock(): bool
+    {
+        try {
+            $lockCallable = self::toCallable(self::$config['access_token']['custom']['lock']);
+            $customKey = self::$config['access_token']['custom']['custom_key'];
+
+            $result = call_user_func($lockCallable, $customKey, 10);
+
+            return (bool) $result;
+        } catch (\Throwable $e) {
+            // If lock acquisition fails, log and continue without mutex
+            call_user_func(self::getCallableLogFunction(), 'Failed to acquire token-refresh lock: '.$e->getMessage());
+
+            return false;
+        }
+    }
+
+    /**
+     * Release the token-refresh lock
+     */
+    private static function releaseLock(): void
+    {
+        try {
+            $unlockCallable = self::toCallable(self::$config['access_token']['custom']['unlock']);
+            $customKey = self::$config['access_token']['custom']['custom_key'];
+
+            call_user_func($unlockCallable, $customKey);
+        } catch (\Throwable $e) {
+            // If unlock fails, log but don't throw
+            call_user_func(self::getCallableLogFunction(), 'Failed to release token-refresh lock: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Wait briefly for another process to complete token refresh, then check cache
+     *
+     * @return string|null The cached access token if found after waiting, null otherwise
+     */
+    private static function waitForCacheRefresh(): ?string
+    {
+        // Wait 1-2 seconds for the lock holder to complete
+        usleep(random_int(1000000, 2000000)); // 1-2 seconds in microseconds
+
+        // Check if a fresh token was cached while we waited
+        return self::getCachedAccessToken();
     }
 
     /**

@@ -134,6 +134,30 @@ return (function () {
                  * 'del' will be passed one parameter (<custom_key>)
                  */
                 'del' => simplifiHqOauthApiLibEnv('SIMPLIFI_API_ACCESS_TOKEN_DEL'),
+
+                /**
+                 * Callable (optional)
+                 * Mutex lock for parallel token-refresh protection. If provided, must be paired with 'unlock'.
+                 * Called when multiple requests try to refresh the token simultaneously.
+                 * 'lock' will be passed two parameters (<custom_key>, <ttl_seconds>)
+                 * Should return bool: true if lock was acquired, false otherwise
+                 * e.g. ["\App\Cache\TokenLock", "acquire"]
+                 * If using dotenv your .env file might look like:
+                 * SIMPLIFI_API_ACCESS_TOKEN_LOCK="[\"\\\\App\\\\Cache\\\\TokenLock\", \"acquire\"]"
+                 */
+                'lock' => simplifiHqOauthApiLibEnv('SIMPLIFI_API_ACCESS_TOKEN_LOCK'),
+
+                /**
+                 * Callable (optional)
+                 * Mutex unlock for parallel token-refresh protection. If provided, must be paired with 'lock'.
+                 * Called to release the lock after token refresh completes.
+                 * 'unlock' will be passed one parameter (<custom_key>)
+                 * Should return void or bool
+                 * e.g. ["\App\Cache\TokenLock", "release"]
+                 * If using dotenv your .env file might look like:
+                 * SIMPLIFI_API_ACCESS_TOKEN_UNLOCK="[\"\\\\App\\\\Cache\\\\TokenLock\", \"release\"]"
+                 */
+                'unlock' => simplifiHqOauthApiLibEnv('SIMPLIFI_API_ACCESS_TOKEN_UNLOCK'),
             ],
 
         ],
