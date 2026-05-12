@@ -146,7 +146,7 @@ The package has no Laravel dependencies (verified — [composer.json](composer.j
 - [x] **Create `.github/workflows/ci.yml`** — runs `composer install`, `vendor/bin/pint --test` (non-blocking — promoted to blocking in Stage 4), `vendor/bin/phpstan analyse` (blocking), and `vendor/bin/pest` (blocking) on every push and PR. Deferred from Stage 0 because Stage 0 had no test or static-analysis gates to put in it
 - [x] **Add `vendor/bin/phpstan analyse` as a required CI check** (blocking from install — different from API/GUI which start at level 1). Pre-existing source issues frozen in `phpstan-baseline.neon`; any new violation breaks CI
 
-### HTTP client consolidation — decide and act
+### HTTP client consolidation — decide and act (✔️)
 
 The package currently runs **two** HTTP clients: `php-curl-class` (sync, [src/ApiRequest.php:5](src/ApiRequest.php)) and Guzzle (async/batch, [src/AsyncClient.php](src/AsyncClient.php)). Same job, two libraries, two SSL-verify code paths, two URL builders.
 
