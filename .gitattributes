@@ -9,4 +9,3 @@ phpunit.xml.dist export-ignore
 .gitignore export-ignore
 OAUTH_MODERNISATION_PLAN.md export-ignore
 
-
