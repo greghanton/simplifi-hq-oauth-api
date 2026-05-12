@@ -1,0 +1,97 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/ApiRequest.php
+
+		-
+			message: '#^Parameter \#1 \$array \(non\-empty\-list\<string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: src/ApiRequest.php
+
+		-
+			message: '#^Comparison operation "\>" between 0 and 0 is always false\.$#'
+			identifier: greater.alwaysFalse
+			count: 2
+			path: src/ApiResponse.php
+
+		-
+			message: '#^Method SimplifiApi\\ApiResponse\:\:__construct\(\) with return type void returns \$this\(SimplifiApi\\ApiResponse\) but should not return anything\.$#'
+			identifier: return.void
+			count: 1
+			path: src/ApiResponse.php
+
+		-
+			message: '#^PHPDoc tag @param has invalid value \(string \.\.\. any number of parameter names\)\: Unexpected token "any", expected variable at offset 186 on line 6$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/ApiResponse.php
+
+		-
+			message: '#^PHPDoc tag @return with type bool\|SimplifiApi\\ApiResponse is not subtype of native type SimplifiApi\\ApiResponse\|false\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: src/ApiResponse.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: src/ApiResponse.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between array and false will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: src/ApiResponse.php
+
+		-
+			message: '#^Variable \$value on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: src/ApiResponse.php
+
+		-
+			message: '#^Access to an undefined property SimplifiApi\\AsyncApiResponse\:\:\$paginator\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/AsyncApiResponse.php
+
+		-
+			message: '#^Instanceof between SimplifiApi\\ApiResponse and SimplifiApi\\AsyncApiResponse will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/AsyncApiResponse.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: src/AsyncApiResponse.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>data" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: src/AsyncApiResponse.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/AsyncClient.php
+
+		-
+			message: '#^Parameter \#1 \$array \(non\-empty\-list\<string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: src/AsyncClient.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: src/AsyncClient.php

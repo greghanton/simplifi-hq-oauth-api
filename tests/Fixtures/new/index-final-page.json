@@ -1,0 +1,23 @@
+{
+    "data": [
+        {"id": 7, "name": "Item 7"},
+        {"id": 8, "name": "Item 8"},
+        {"id": 9, "name": "Item 9"}
+    ],
+    "meta": {
+        "current_page": 3,
+        "last_page": 3,
+        "from": 7,
+        "to": 9,
+        "per_page": 3,
+        "total": 9,
+        "path": "https://api.example.com/items"
+    },
+    "links": {
+        "first": "https://api.example.com/items?page=1",
+        "last": "https://api.example.com/items?page=3",
+        "prev": "https://api.example.com/items?page=2",
+        "next": null
+    }
+}
+

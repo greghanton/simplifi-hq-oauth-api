@@ -111,14 +111,38 @@ class ApiResponse implements ApiResponseInterface
             $errors[] = ['title' => $response['message']];
 
             // Also handle validation errors in new format: {field: [msg], ...}
-            if (isset($response['errors']) && is_array($response['errors'])) {
-                foreach ($response['errors'] as $field => $messages) {
-                    if (is_array($messages)) {
-                        foreach ($messages as $message) {
-                            $errors[] = ['title' => $message];
+            // The `errors` field may be either an array (assoc-array decode) or a stdClass (object decode).
+            if (isset($response['errors']) && (is_array($response['errors']) || is_object($response['errors']))) {
+                $errorsField = is_object($response['errors']) ? get_object_vars($response['errors']) : $response['errors'];
+                // Distinguish Laravel's `errors: {field: [msg]}` from legacy `errors: [...flat...]`.
+                // Laravel keys are field names (strings), legacy is a sequential list of error objects.
+                $isLaravelShape = ! array_is_list($errorsField);
+
+                if ($isLaravelShape) {
+                    foreach ($errorsField as $messages) {
+                        if (is_array($messages)) {
+                            foreach ($messages as $message) {
+                                $errors[] = ['title' => $message];
+                            }
+                        } else {
+                            $errors[] = ['title' => $messages];
                         }
-                    } else {
-                        $errors[] = ['title' => $messages];
+                    }
+                } else {
+                    // Sequential list of error entries — flow each into ['title' => ...].
+                    foreach ($errorsField as $entry) {
+                        if (is_object($entry) || is_array($entry)) {
+                            $arr = (array) $entry;
+                            if (isset($arr['title'])) {
+                                $errors[] = ['title' => $arr['title']];
+                            } elseif (isset($arr['message'])) {
+                                $errors[] = ['title' => $arr['message']];
+                            } else {
+                                $errors[] = ['title' => (string) json_encode($arr)];
+                            }
+                        } else {
+                            $errors[] = ['title' => (string) $entry];
+                        }
                     }
                 }
             }
@@ -381,82 +405,82 @@ class ApiResponse implements ApiResponseInterface
         }
     }
 
-     /**
-      * Return an ApiResponse for the next page of this request.
-      * This should only be used for paginated results.
-      * Returns FALSE if request is not paginated or there are no more pages
-      *
-      * @return bool|ApiResponse FALSE: If there are no more pages.
-      *
-      * @throws \Exception
-      */
-     public function nextPage(): ApiResponse|false
-     {
-         if ($this->hasNextPage()) {
-             // modify the request so it will get the next page
-             $requestOptions = $this->requestOptions;
-             $requestOptions['data']['page'] = $this->getCurrentPage() + 1;
+    /**
+     * Return an ApiResponse for the next page of this request.
+     * This should only be used for paginated results.
+     * Returns FALSE if request is not paginated or there are no more pages
+     *
+     * @return bool|ApiResponse FALSE: If there are no more pages.
+     *
+     * @throws \Exception
+     */
+    public function nextPage(): ApiResponse|false
+    {
+        if ($this->hasNextPage()) {
+            // modify the request so it will get the next page
+            $requestOptions = $this->requestOptions;
+            $requestOptions['data']['page'] = $this->getCurrentPage() + 1;
 
-             $response = ApiRequest::request($requestOptions);
-             if (! $response->success()) {
-                 throw new \Exception('Unknown error while getting next page from API.');
-             }
+            $response = ApiRequest::request($requestOptions);
+            if (! $response->success()) {
+                throw new \Exception('Unknown error while getting next page from API.');
+            }
 
-             return $response;
+            return $response;
 
-         } else {
-             return false;
-         }
-     }
+        } else {
+            return false;
+        }
+    }
 
-     /**
-      * Does this request have another page?
-      * Should only be called on paginated endpoint responses
-      * Supports both legacy (paginator) and new (meta/links) envelope shapes
-      */
-     private function hasNextPage(): bool
-     {
-         $shape = $this->getPaginatorShape();
+    /**
+     * Does this request have another page?
+     * Should only be called on paginated endpoint responses
+     * Supports both legacy (paginator) and new (meta/links) envelope shapes
+     */
+    private function hasNextPage(): bool
+    {
+        $shape = $this->getPaginatorShape();
 
-         if ($shape === 'meta') {
-             // New envelope: check meta.current_page < meta.last_page (or total_pages)
-             $meta = $this->property('meta');
-             if (! $meta) {
-                 return false;
-             }
-             $currentPage = $this->property('meta', 'current_page');
-             $lastPage = $this->property('meta', 'last_page') ?? $this->property('meta', 'total_pages');
+        if ($shape === 'meta') {
+            // New envelope: check meta.current_page < meta.last_page (or total_pages)
+            $meta = $this->property('meta');
+            if (! $meta) {
+                return false;
+            }
+            $currentPage = $this->property('meta', 'current_page');
+            $lastPage = $this->property('meta', 'last_page') ?? $this->property('meta', 'total_pages');
 
-             return $currentPage !== null && $lastPage !== null && $currentPage < $lastPage;
-         } elseif ($shape === 'paginator') {
-             // Legacy envelope: check paginator.current_page < paginator.total_pages
-             return $this->property('paginator') && $this->property('paginator', 'current_page') < $this->property('paginator', 'total_pages');
-         }
+            return $currentPage !== null && $lastPage !== null && $currentPage < $lastPage;
+        } elseif ($shape === 'paginator') {
+            // Legacy envelope: check paginator.current_page < paginator.total_pages
+            return $this->property('paginator') && $this->property('paginator', 'current_page') < $this->property('paginator', 'total_pages');
+        }
 
-         return false;
-     }
+        return false;
+    }
 
-     /**
-      * Detect which paginator shape the response uses
-      *
-      * @return 'meta'|'paginator'|null The paginator shape type, or null if response is not paginated
-      */
-     private function getPaginatorShape(): ?string
-     {
-         $response = (array) $this->response();
+    /**
+     * Detect which paginator shape the response uses
+     *
+     * @return 'meta'|'paginator'|null The paginator shape type, or null if response is not paginated
+     */
+    private function getPaginatorShape(): ?string
+    {
+        $response = (array) $this->response();
 
-         // Check for new envelope shape (meta/links)
-         if (array_key_exists('meta', $response) && ! empty($response['meta'])) {
-             return 'meta';
-         }
+        // Check for new envelope shape (meta/links)
+        if (array_key_exists('meta', $response) && ! empty($response['meta'])) {
+            return 'meta';
+        }
 
-         // Check for legacy envelope shape (paginator)
-         if (array_key_exists('paginator', $response) && ! empty($response['paginator'])) {
-             return 'paginator';
-         }
+        // Check for legacy envelope shape (paginator)
+        if (array_key_exists('paginator', $response) && ! empty($response['paginator'])) {
+            return 'paginator';
+        }
 
-         return null;
-     }
+        return null;
+    }
 
     /**
      * This will do as many requests as required to fetch every page's items into a single array and return that array
@@ -518,34 +542,35 @@ class ApiResponse implements ApiResponseInterface
 
     }
 
-     /**
-      * Get the current page number
-      * Should only be called on paginated endpoint responses
-      * Supports both legacy (paginator) and new (meta) envelope shapes
-      *
-      * @throws \Exception when attempting to get the page number of a non-paginated response
-      */
-     private function getCurrentPage(): int|string
-     {
-         $shape = $this->getPaginatorShape();
+    /**
+     * Get the current page number
+     * Should only be called on paginated endpoint responses
+     * Supports both legacy (paginator) and new (meta) envelope shapes
+     *
+     * @throws \Exception when attempting to get the page number of a non-paginated response
+     */
+    private function getCurrentPage(): int|string
+    {
+        $shape = $this->getPaginatorShape();
 
-         if ($shape === 'meta') {
-             $currentPage = $this->property('meta', 'current_page');
-             if ($currentPage === null) {
-                 throw new \Exception('Attempted to get the page number for a non paginated response.');
-             }
+        if ($shape === 'meta') {
+            $currentPage = $this->property('meta', 'current_page');
+            if ($currentPage === null) {
+                throw new \Exception('Attempted to get the page number for a non paginated response.');
+            }
 
-             return $currentPage;
-         } elseif ($shape === 'paginator') {
-             if (! $this->paginator) {
-                 throw new \Exception('Attempted to get the page number for a non paginated response.');
-             }
+            return $currentPage;
+        } elseif ($shape === 'paginator') {
+            $currentPage = $this->property('paginator', 'current_page');
+            if ($currentPage === null) {
+                throw new \Exception('Attempted to get the page number for a non paginated response.');
+            }
 
-             return $this->paginator->current_page;
-         }
+            return $currentPage;
+        }
 
-         throw new \Exception('Attempted to get the page number for a non paginated response.');
-     }
+        throw new \Exception('Attempted to get the page number for a non paginated response.');
+    }
 
     /**
      * Basically the same as __get() except you can get sub properties

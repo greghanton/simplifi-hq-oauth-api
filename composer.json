@@ -29,9 +29,21 @@
     "phpunit/phpunit": "^12.0.0",
     "phpstan/phpstan": "^2.0.0"
   },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
   "scripts": {
     "lint": "vendor/bin/pint",
-    "lint:check": "vendor/bin/pint --test"
+    "lint:check": "vendor/bin/pint --test",
+    "test": "vendor/bin/pest",
+    "stan": "vendor/bin/phpstan analyse",
+    "ci": [
+      "@lint:check",
+      "@stan",
+      "@test"
+    ]
   },
   "config": {
     "allow-plugins": {

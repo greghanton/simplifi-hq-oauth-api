@@ -1,0 +1,7 @@
+{
+    "errors": [
+        {"title": "The name field is required."},
+        {"title": "The email must be a valid email address."}
+    ]
+}
+

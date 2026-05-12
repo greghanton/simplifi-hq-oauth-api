@@ -122,13 +122,13 @@ API Stage 1 introduces the new `{data, meta, links}` envelope behind an Accept-h
 - [ ] **Update [src/ApiResponse.php:98](src/ApiResponse.php) `errors()`** — feature-detect Laravel `{message, errors: {field: [msg]}}` shape vs current `{errors: [...], error: {message}}`. Both flow into the same `[['title' => ...], ...]` output
 - [ ] **No change to `Iterator` impl, `count()`, `success()`** — both envelopes have a top-level `data` key, so iteration and counting already work
 
-### Smoke tests — Pest 4.x on PHPUnit 12.x
+### Smoke tests — Pest 4.x on PHPUnit 12.x (✔️)
 
 Match the API repo's stack ([API_MODERNISATION_PLAN.md:24](API_MODERNISATION_PLAN.md) — "PHPUnit 12.x, Pest 4.x").
 
-- [ ] **`composer require --dev pestphp/pest:^4.0 phpunit/phpunit:^12.0`** plus whichever Pest plugins the API repo uses (confirm against API's `composer.json`)
-- [ ] **Test fixture set** — JSON files for both envelopes (legacy + new) covering: index page 1, index final page, single-resource show, validation-error response, auth-failure response, server-error response
-- [ ] **Test coverage** —
+- [x] **`composer require --dev pestphp/pest:^4.0 phpunit/phpunit:^12.0`** plus whichever Pest plugins the API repo uses (confirm against API's `composer.json`)
+- [x] **Test fixture set** — JSON files for both envelopes (legacy + new) covering: index page 1, index final page, single-resource show, validation-error response, auth-failure response, server-error response
+- [x] **Test coverage** —
   - `ApiRequest::request()` happy path returns `ApiResponse` with `success() === true`
   - Failed responses return `success() === false`, `errors()` populated correctly for **both** envelope shapes
   - `ApiRequest::batch()` runs requests in parallel, preserves order
@@ -137,14 +137,14 @@ Match the API repo's stack ([API_MODERNISATION_PLAN.md:24](API_MODERNISATION_PLA
   - Auth-retry path: intercept first call, return `AuthenticationException`, assert second call is made with a fresh token (cache cleared between)
   - Mutex path: simulate concurrent token refreshes, assert only one `oauth/token` request fires
 
-### Static analysis — vanilla PHPStan
+### Static analysis — vanilla PHPStan (✔️)
 
 The package has no Laravel dependencies (verified — [composer.json](composer.json) only requires `php`, `php-curl-class`, `guzzlehttp/guzzle`, `guzzlehttp/promises`). **Larastan is the wrong tool here** — it loads Laravel-specific rules with nothing to apply to. Use `phpstan/phpstan` instead.
 
-- [ ] **`composer require --dev phpstan/phpstan`** at level 5 (small repo, no ratchet needed)
-- [ ] **`phpstan.neon`** — paths `src/`, level 5
-- [ ] **Create `.github/workflows/ci.yml`** — runs `composer install`, `vendor/bin/pint --test` (non-blocking — promoted to blocking in Stage 4), `vendor/bin/phpstan analyse` (blocking), and `vendor/bin/pest` (blocking) on every push and PR. Deferred from Stage 0 because Stage 0 had no test or static-analysis gates to put in it
-- [ ] **Add `vendor/bin/phpstan analyse` as a required CI check** (blocking from install — different from API/GUI which start at level 1)
+- [x] **`composer require --dev phpstan/phpstan`** at level 5 (small repo, no ratchet needed)
+- [x] **`phpstan.neon`** — paths `src/`, level 5
+- [x] **Create `.github/workflows/ci.yml`** — runs `composer install`, `vendor/bin/pint --test` (non-blocking — promoted to blocking in Stage 4), `vendor/bin/phpstan analyse` (blocking), and `vendor/bin/pest` (blocking) on every push and PR. Deferred from Stage 0 because Stage 0 had no test or static-analysis gates to put in it
+- [x] **Add `vendor/bin/phpstan analyse` as a required CI check** (blocking from install — different from API/GUI which start at level 1). Pre-existing source issues frozen in `phpstan-baseline.neon`; any new violation breaks CI
 
 ### HTTP client consolidation — decide and act
 

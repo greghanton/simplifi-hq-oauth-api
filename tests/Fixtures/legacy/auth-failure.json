@@ -1,0 +1,7 @@
+{
+    "type": "AuthenticationException",
+    "error": {
+        "message": "Unauthenticated."
+    }
+}
+

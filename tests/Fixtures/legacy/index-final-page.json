@@ -1,0 +1,14 @@
+{
+    "data": [
+        {"id": 7, "name": "Item 7"},
+        {"id": 8, "name": "Item 8"},
+        {"id": 9, "name": "Item 9"}
+    ],
+    "paginator": {
+        "current_page": 3,
+        "total_pages": 3,
+        "total_count": 9,
+        "per_page": 3
+    }
+}
+
