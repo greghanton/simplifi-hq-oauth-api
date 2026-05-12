@@ -153,12 +153,12 @@ The package currently runs **two** HTTP clients: `php-curl-class` (sync, [src/Ap
 - [x] **Grep the GUI for `->getCurl(`** — zero hits confirmed; the only public-surface tie to `php-curl-class` (`ApiResponse::getCurl(): Curl`) had no consumers
 - [x] **Consolidated onto Guzzle in Stage 1.** `php-curl-class` removed from `composer.json` and `composer.lock`. `ApiRequest::request()` now routes through `AsyncClient::request()` (synchronous Guzzle), reusing the same client, URL builder, and SSL-verify path as async/batch. `ApiResponse` and `AsyncApiResponse` unified into a single PSR-7-backed `ApiResponse` (`AsyncApiResponse` kept as a deprecated subclass shim for any stale type hints). `getCurl()` / `getCurlInfo()` / `setCurl()` removed from the public surface. User-Agent header drops the `PHP-Curl-Class/x.x.x` and raw libcurl segments; reports `GuzzleHttp/<major>` instead. CI green: Pint clean, PHPStan level 5 clean (baseline regenerated), Pest 47/47
 
-### Documentation
+### Documentation (✔️)
 
 - [x] **Write `README.md` properly** — install, configuration (env vars table), basic usage examples, the `config:cache` gotcha, Redis cache setup, mutex setup, event listener examples
 - [x] **Update CHANGELOG** for `1.1.0`
 
-### OAuth grant type — coordinated default flip
+### OAuth grant type — coordinated default flip (✔️)
 
 Deferred from Stage 0. The current [config.php:24](config.php) default for `grant_type` is `'password'`, which OAuth 2.1 / RFC 9700 deprecate. Flip the default to `'client_credentials'` (recommended for server-to-server) **without breaking GUI auth in production**.
 
@@ -174,24 +174,24 @@ Once every consumer environment sets `SIMPLIFI_API_GRANT_TYPE` explicitly:
 - [x] **Flip the default** at [config.php:24](config.php) from `'password'` to `'client_credentials'`. Drop the "Default to 'password' for backwards compatibility" comment
 - [x] **Update README** to document `client_credentials` as the recommended grant type and `password` as deprecated
 
-### Tag and pin
+### Tag and pin (✔️)
 
-- [ ] **Tag `1.1.0`** once smoke tests + PHPStan green in CI
-- [ ] **GUI bumps pin to `^1.1`** (tracked separately in GUI repo)
+- [x] **Tag `1.1.0`** once smoke tests + PHPStan green in CI
+- [x] **GUI bumps pin to `^1.1`** (tracked separately in GUI repo)
 
 </details>
 
 ### Acceptance criteria
 
-- Redis-default token cache documented in README; `temp_file` fallback intact
-- Token mutex hook pattern (`lock`/`unlock` callables) implemented; mutex is opt-in via config
-- `ApiResponse` reads both legacy and new envelopes for pagination and errors; verified by Pest fixtures
-- Pest smoke test suite green, covering both envelopes, auth-retry, mutex, batch
-- Vanilla PHPStan level 5 blocking in CI
-- `.github/workflows/ci.yml` live with Pint (non-blocking), PHPStan (blocking), Pest (blocking) checks
-- `php-curl-class` either consolidated away (preferred) or formally deferred to Stage 4
-- `grant_type` default flipped to `client_credentials`, with every GUI environment `.env` declaring its grant type explicitly first
-- `1.1.0` tagged; GUI pinned to `^1.1`
+- ✔️ Redis-default token cache documented in README; `temp_file` fallback intact
+- ✔️ Token mutex hook pattern (`lock`/`unlock` callables) implemented; mutex is opt-in via config
+- ✔️ `ApiResponse` reads both legacy and new envelopes for pagination and errors; verified by Pest fixtures
+- ✔️ Pest smoke test suite green, covering both envelopes, auth-retry, mutex, batch
+- ✔️ Vanilla PHPStan level 5 blocking in CI
+- ✔️ `.github/workflows/ci.yml` live with Pint (non-blocking), PHPStan (blocking), Pest (blocking) checks
+- ✔️ `php-curl-class` either consolidated away (preferred) or formally deferred to Stage 4
+- ✔️ `grant_type` default flipped to `client_credentials`, with every GUI environment `.env` declaring its grant type explicitly first
+- ✔️ `1.1.0` tagged; GUI pinned to `^1.1`
 
 ---
 
