@@ -326,17 +326,17 @@ Sequencing matters:
 
 ### Permanent decisions
 
-| Decision | Made in | Rationale |
-|---|---|---|
-| Public surface frozen | All stages | 317 GUI call sites; consumer stability is the package's most valuable property |
-| Framework-agnostic (no Laravel deps) | All stages | Other tools (jobs, scheduled commands, future internal tools) can use the package without owning Laravel |
-| Vanilla PHPStan, not Larastan | Stage 1 | Package has no Laravel deps; Larastan rules have nothing to apply to |
-| Callable hook pattern for cache + mutex | Stage 1 | Matches existing `get`/`set`/`del` pattern; keeps package framework-agnostic |
-| Pest 4.x on PHPUnit 12.x | Stage 1 | Matches API repo stack |
-| Both-envelope support from Stage 1, not Stage 4 | Stage 1 | API plan's Stage 1 explicitly requires OAuth smoke tests to cover both envelopes ([API_MODERNISATION_PLAN.md:61](API_MODERNISATION_PLAN.md)) |
-| Return-don't-throw error model | All stages | Existing contract; consumers escalate via `$response->throw()` |
-| Single retry on auth exception | All stages | Existing behaviour; no exponential backoff |
-| No observability dashboard for the package | Stage 4 | Too small to warrant one; metrics flow via GUI event listeners into Pulse |
+| Decision                                        | Made in    | Rationale                                                                                                                                    |
+|-------------------------------------------------|------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| Public surface frozen                           | All stages | 317 GUI call sites; consumer stability is the package's most valuable property                                                               |
+| Framework-agnostic (no Laravel deps)            | All stages | Other tools (jobs, scheduled commands, future internal tools) can use the package without owning Laravel                                     |
+| Vanilla PHPStan, not Larastan                   | Stage 1    | Package has no Laravel deps; Larastan rules have nothing to apply to                                                                         |
+| Callable hook pattern for cache + mutex         | Stage 1    | Matches existing `get`/`set`/`del` pattern; keeps package framework-agnostic                                                                 |
+| Pest 4.x on PHPUnit 12.x                        | Stage 1    | Matches API repo stack                                                                                                                       |
+| Both-envelope support from Stage 1, not Stage 4 | Stage 1    | API plan's Stage 1 explicitly requires OAuth smoke tests to cover both envelopes ([API_MODERNISATION_PLAN.md:61](API_MODERNISATION_PLAN.md)) |
+| Return-don't-throw error model                  | All stages | Existing contract; consumers escalate via `$response->throw()`                                                                               |
+| Single retry on auth exception                  | All stages | Existing behaviour; no exponential backoff                                                                                                   |
+| No observability dashboard for the package      | Stage 4    | Too small to warrant one; metrics flow via GUI event listeners into Pulse                                                                    |
 
 ### Out of scope / permanently deferred
 
@@ -349,22 +349,22 @@ Sequencing matters:
 
 ### Cross-repo coordination
 
-| Cross-repo dependency | Direction | Stage |
-|---|---|---|
-| GUI Stage 0 pin to `^1.0` | OAuth blocks GUI | Stage 0 ✓ |
-| OAuth `grant_type` default flip | GUI must declare grant type in every `.env` first; API tier must accept `client_credentials` | Stage 1 |
-| OAuth Stage 1 envelope-shape support | API Stage 1 needs this | Stage 1 |
-| OAuth Stage 1 smoke tests covering both envelopes | API Stage 1 line 61 explicitly references | Stage 1 |
-| Mutex metrics into Pulse | GUI registers listeners; OAuth provides hooks (already exist) | Stage 2 onwards |
-| Legacy envelope retirement | API Stage 4 Phase 5 triggers OAuth Stage 4 Phase 4 | Stage 4 |
+| Cross-repo dependency                             | Direction                                                                                    | Stage           |
+|---------------------------------------------------|----------------------------------------------------------------------------------------------|-----------------|
+| GUI Stage 0 pin to `^1.0`                         | OAuth blocks GUI                                                                             | Stage 0 ✓       |
+| OAuth `grant_type` default flip                   | GUI must declare grant type in every `.env` first; API tier must accept `client_credentials` | Stage 1         |
+| OAuth Stage 1 envelope-shape support              | API Stage 1 needs this                                                                       | Stage 1         |
+| OAuth Stage 1 smoke tests covering both envelopes | API Stage 1 line 61 explicitly references                                                    | Stage 1         |
+| Mutex metrics into Pulse                          | GUI registers listeners; OAuth provides hooks (already exist)                                | Stage 2 onwards |
+| Legacy envelope retirement                        | API Stage 4 Phase 5 triggers OAuth Stage 4 Phase 4                                           | Stage 4         |
 
 ### Programme summary
 
-| Stage | Goal | Duration | Effort |
-|---|---|---|---|
-| 0 ✓ | Housekeeping, first tag (signed off 2026-05-07; tags `1.0.0` + `1.0.2`) | ~2–3 days | ~2–3 dev-days |
-| 1 | Hardening, envelope contract, smoke tests | ~1–1.5 weeks | ~5–8 dev-days |
-| 2 | Pilot watching brief (reactive) | distributed across GUI Stage 2 | ~0–2 dev-days |
-| 3 | Roll-out watching brief (reactive) | distributed across GUI Stage 3 | ~1–3 dev-days |
-| 4 | Hardening, mutex tuning, legacy envelope retirement | ~1 week | ~2–4 dev-days |
-| **Total** | **Hardened, tested, properly versioned package** | **~3–4 weeks active + reactive across programme** | **~10–20 dev-days** |
+| Stage     | Goal                                                                    | Duration                                          | Effort              |
+|-----------|-------------------------------------------------------------------------|---------------------------------------------------|---------------------|
+| 0 ✓       | Housekeeping, first tag (signed off 2026-05-07; tags `1.0.0` + `1.0.2`) | ~2–3 days                                         | ~2–3 dev-days       |
+| 1         | Hardening, envelope contract, smoke tests                               | ~1–1.5 weeks                                      | ~5–8 dev-days       |
+| 2         | Pilot watching brief (reactive)                                         | distributed across GUI Stage 2                    | ~0–2 dev-days       |
+| 3         | Roll-out watching brief (reactive)                                      | distributed across GUI Stage 3                    | ~1–3 dev-days       |
+| 4         | Hardening, mutex tuning, legacy envelope retirement                     | ~1 week                                           | ~2–4 dev-days       |
+| **Total** | **Hardened, tested, properly versioned package**                        | **~3–4 weeks active + reactive across programme** | **~10–20 dev-days** |
