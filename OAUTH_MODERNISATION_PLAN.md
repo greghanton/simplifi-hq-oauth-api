@@ -195,6 +195,44 @@ Once every consumer environment sets `SIMPLIFI_API_GRANT_TYPE` explicitly:
 
 ---
 
+## Stage 1.5 — Identity coordination
+
+<details>
+<summary>Show stage details</summary>
+
+**Goal:** Align the package with the API repo's Stage 1.5 user-scoped token model. The Stage 1 default flip to `client_credentials` stands as a *config default*; first-party consumers (No Worries, Apex Wealth, Joy Pilot GUI) explicitly configure `password` grant in their `.env` (which Stage 1 already required them to do — only the *value* changes). The package itself needs minimal change: confirm scope passthrough and document the per-consumer grant matrix.
+
+**Duration:** ~0.5–1 dev-day, mostly docs and verification
+
+**Depends on:** API Stage 1.5 deployed to staging with user-scoped password-grant tokens
+
+### Tasks
+
+- [ ] **Confirm `ApiRequest` passes `scope` in token requests** — inspect `config.php` and `AccessToken::generateNewAccessToken()` for whether `SIMPLIFI_API_SCOPE` env is read and forwarded to the `/oauth/token` POST body. Add if missing (single-line addition)
+- [ ] **Verify against API staging** — issue a token with `grant_type=password` + `scope=full_access` via the package, inspect the returned JWT for `user_id` and `scopes` claims, confirm both are populated correctly
+- [ ] **Document the per-consumer grant matrix** in `README.md`:
+  - **First-party** (Joy Pilot GUI, No Worries, Apex Wealth): `grant_type=password`, `scope=full_access`. Token carries `user_id` claim. Each consumer authenticates the user via their own login form
+  - **Anonymous server-to-server** (password reset, signup, email verification): `grant_type=client_credentials`, no scope. Token carries no user identity; only specific exempt-listed API endpoints accept these tokens
+  - **Third-party** (MCP, AI integrations): `authorization_code + PKCE`. Different consumption path — these consumers do *not* use this package; they speak directly to Passport's authorization-code flow. Listed here for completeness
+- [ ] **Tag `1.1.x` patch** if a code change was needed (scope passthrough); otherwise no version bump — docs land on `main` directly
+
+### What is NOT in Stage 1.5
+
+- No public-surface change (still frozen per the programme's invariant)
+- No new grant types added to the package itself — `authorization_code + PKCE` for MCP is consumed directly against Passport, not via this package
+- No mutex / cache changes — Stage 1 hardening still load-bearing
+
+</details>
+
+### Acceptance criteria
+
+- ✔️ `SIMPLIFI_API_SCOPE` env var read and forwarded to token requests (or confirmed already supported)
+- ✔️ Verified end-to-end against API staging: password-grant token carries `user_id` and `scopes` claims
+- ✔️ README documents the per-consumer grant matrix
+- ✔️ `1.1.x` patch tagged if code change required; otherwise no version bump
+
+---
+
 ## Stage 2 — Pilot watching brief
 
 <details>
@@ -296,7 +334,7 @@ Sequencing matters:
 2. **OAuth-API** trims smoke tests from "both envelopes" to "new envelope only"
 3. **OAuth-API** removes the feature-detection branches in `nextPage()` / `errors()` added in Stage 1 — paths now assume `meta`/`links` and Laravel error shape
 4. **Tag `1.2.0`** (additive removal of fallback paths is technically backwards-compatible since the paths only fire on old responses that no longer exist) **or `2.0.0`** if you want to signal the contract change explicitly. Recommendation: `2.0.0` for clarity, given the smoke tests change shape
-5. **API removes** the Accept-header gate and deletes Transformer classes
+5. **API removes** the Accept-header gate and the legacy `paginator` shape. **Transformer classes stay** — per the API plan's Stage 1 decision, Transformers produce response bodies under the new envelope and are not part of the legacy retirement scope
 6. **GUI bumps pin** to `^2.0` (or `^1.2`) in a coordinated PR
 
 - [ ] **Trim Pest fixtures** to new envelope only
@@ -334,6 +372,7 @@ Sequencing matters:
 | Callable hook pattern for cache + mutex         | Stage 1    | Matches existing `get`/`set`/`del` pattern; keeps package framework-agnostic                                                                 |
 | Pest 4.x on PHPUnit 12.x                        | Stage 1    | Matches API repo stack                                                                                                                       |
 | Both-envelope support from Stage 1, not Stage 4 | Stage 1    | API plan's Stage 1 explicitly requires OAuth smoke tests to cover both envelopes ([API_MODERNISATION_PLAN.md:61](API_MODERNISATION_PLAN.md)) |
+| Per-consumer grant matrix                       | Stage 1.5  | First-party (GUI, No Worries, Apex Wealth): `password` + user-scoped tokens + `full_access` scope. Anonymous (password reset, signup): `client_credentials`. Third-party (MCP): `authorization_code + PKCE` — direct against Passport, not via this package |
 | Return-don't-throw error model                  | All stages | Existing contract; consumers escalate via `$response->throw()`                                                                               |
 | Single retry on auth exception                  | All stages | Existing behaviour; no exponential backoff                                                                                                   |
 | No observability dashboard for the package      | Stage 4    | Too small to warrant one; metrics flow via GUI event listeners into Pulse                                                                    |
@@ -354,6 +393,8 @@ Sequencing matters:
 | GUI Stage 0 pin to `^1.0`                         | OAuth blocks GUI                                                                             | Stage 0 ✓       |
 | OAuth `grant_type` default flip                   | GUI must declare grant type in every `.env` first; API tier must accept `client_credentials` | Stage 1         |
 | OAuth Stage 1 envelope-shape support              | API Stage 1 needs this                                                                       | Stage 1         |
+| First-party `.env` flip back to `password`        | API Stage 1.5 issues user-scoped tokens for `password` grant; first-party `.env`s set `SIMPLIFI_API_GRANT_TYPE=password` + `SIMPLIFI_API_SCOPE=full_access` | Stage 1.5       |
+| Scope passthrough in token requests               | API Stage 1.5 expects `scope` param in `/oauth/token` POST                                   | Stage 1.5       |
 | OAuth Stage 1 smoke tests covering both envelopes | API Stage 1 line 61 explicitly references                                                    | Stage 1         |
 | Mutex metrics into Pulse                          | GUI registers listeners; OAuth provides hooks (already exist)                                | Stage 2 onwards |
 | Legacy envelope retirement                        | API Stage 4 Phase 5 triggers OAuth Stage 4 Phase 4                                           | Stage 4         |
