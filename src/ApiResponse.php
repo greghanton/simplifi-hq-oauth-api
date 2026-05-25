@@ -12,7 +12,7 @@ use Psr\Http\Message\ResponseInterface;
  * synchronous (ApiRequest::request) and asynchronous (ApiRequest::requestAsync,
  * batch) calls.
  *
- * @method throw(string $message) alias of throwException()
+ * @method never throw(string $message) alias of throwException()
  *
  * @see ApiResponse::throwException
  */
@@ -334,7 +334,7 @@ class ApiResponse implements ApiResponseInterface
      *
      * @throws \Exception
      */
-    public function throwException(string $message): void
+    public function throwException(string $message): never
     {
         if (($this->config['APP_ENV'] ?? null) === 'local') {
             $this->dd();
@@ -689,12 +689,12 @@ class ApiResponse implements ApiResponseInterface
     /**
      * Die and dump $this->serialise() (Laravel-style)
      */
-    public function dd($prettyHtml = true, $addAdditionalDataToHtml = true): void
+    public function dd($prettyHtml = true, $addAdditionalDataToHtml = true): never
     {
         if ($prettyHtml) {
             $doctypeString = '<!DOCTYPE html>';
             if (is_string($this->response()) &&
-                substr($this->response(), 0, strlen($doctypeString)) === $doctypeString
+                str_starts_with($this->response(), $doctypeString)
             ) {
                 $respond = $this->response();
 
