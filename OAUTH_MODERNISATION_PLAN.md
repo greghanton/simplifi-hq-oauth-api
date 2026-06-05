@@ -1,5 +1,9 @@
 # Joy Pilot OAuth-API — Modernisation Programme (Stages 0–4)
 
+> [!IMPORTANT]
+> **Stage 1.5 (Identity coordination) now has a cross-repo source-of-truth document:** `STAGE1-5_MODERNISATION_PLAN.md` in the **`simplifi-hq-api`** repo (`docs/STAGE1-5_MODERNISATION_PLAN.md`).
+> It supersedes the *Stage 1.5 — Identity coordination* section below, which is **retained for history**. **Some elements below may be over-written by that document** where they conflict. Note in particular: that document flags this package's Stage 1.5 as likely **under-scoped** — the shift from one shared `client_credentials` app token to **per-user `password`-grant tokens** changes how the token store is keyed and is more than a docs change.
+
 **Scope:** `simplifi-hq-oauth-api` only — a small Composer library wrapping the Joy Pilot API tier with OAuth2 token fetching, caching, and a request dispatcher. Sits between the GUI tier and the API tier as the only path the GUI uses to talk to the API (317 GUI call sites).
 **Stack:** PHP 8.1+, Guzzle 7, php-curl-class (until Stage 1/2 consolidation), framework-agnostic (no Laravel dependency)
 **Approach:** Internal hardening across five stages. The public surface is **immutable** for the entire programme.
