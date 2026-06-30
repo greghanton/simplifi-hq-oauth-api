@@ -204,36 +204,72 @@ Once every consumer environment sets `SIMPLIFI_API_GRANT_TYPE` explicitly:
 <details>
 <summary>Show stage details</summary>
 
-**Goal:** Align the package with the API repo's Stage 1.5 user-scoped token model. The Stage 1 default flip to `client_credentials` stands as a *config default*; first-party consumers (No Worries, Apex Wealth, Joy Pilot GUI) explicitly configure `password` grant in their `.env` (which Stage 1 already required them to do — only the *value* changes). The package itself needs minimal change: confirm scope passthrough and document the per-consumer grant matrix.
+> [!IMPORTANT]
+> This section was originally written around *"first-party consumers switch to the `password`
+> grant."* The cross-repo source-of-truth (`STAGE1-5_MODERNISATION_PLAN.md`, §17 Q5 / §19) **corrected
+> that direction**: the `password` grant is **disabled server-side**, full stop. First-party
+> user-scoped tokens instead come from a new API-side `login_token` Passport grant, exchanged by
+> each consumer **directly** against `/oauth/token` (not through this package) — see
+> `STAGE1-5_MODERNISATION_PLAN.md` §17 Q5 ("Recommended architecture: GUI owns token acquisition +
+> refresh; the package owns token *use*"). This section reflects what was actually built.
 
-**Duration:** ~0.5–1 dev-day, mostly docs and verification
+**Goal:** Align the package with the API repo's Stage 1.5 actor/entity token model, where **this
+package never mints a user-scoped token** — it only ever (a) mints anonymous `client_credentials`
+service tokens, and (b) reads/attaches whatever token a consumer already obtained and stored,
+including per-session user tokens the consumer wrote in itself. The risk this stage closes: a
+per-session cache miss silently falling back to minting a *service*-credential token under that
+user's cache key, which would hand the next request the service account's identity instead of the
+user's.
 
-**Depends on:** API Stage 1.5 deployed to staging with user-scoped password-grant tokens
+**Duration:** ~0.5–1 dev-day (matched the original estimate; the change ended up smaller than a
+new grant type, but the *design* required getting Q5 right)
+
+**Depends on:** API Stage 1.5's `login_token` grant (shipped 2026-06-15, see
+`STAGE1-5_MODERNISATION_PLAN.md` §18) and the per-consumer scope narrowing
 
 ### Tasks
 
-- [ ] **Confirm `ApiRequest` passes `scope` in token requests** — inspect `config.php` and `AccessToken::generateNewAccessToken()` for whether `SIMPLIFI_API_SCOPE` env is read and forwarded to the `/oauth/token` POST body. Add if missing (single-line addition)
-- [ ] **Verify against API staging** — issue a token with `grant_type=password` + `scope=full_access` via the package, inspect the returned JWT for `user_id` and `scopes` claims, confirm both are populated correctly
-- [ ] **Document the per-consumer grant matrix** in `README.md`:
-  - **First-party** (Joy Pilot GUI, No Worries, Apex Wealth): `grant_type=password`, `scope=full_access`. Token carries `user_id` claim. Each consumer authenticates the user via their own login form
-  - **Anonymous server-to-server** (password reset, signup, email verification): `grant_type=client_credentials`, no scope. Token carries no user identity; only specific exempt-listed API endpoints accept these tokens
-  - **Third-party** (MCP, AI integrations): `authorization_code + PKCE`. Different consumption path — these consumers do *not* use this package; they speak directly to Passport's authorization-code flow. Listed here for completeness
-- [ ] **Tag `1.1.x` patch** if a code change was needed (scope passthrough); otherwise no version bump — docs land on `main` directly
+- [x] **Confirm `ApiRequest` passes `scope` in token requests** — already true; `config.php`
+  reads `SIMPLIFI_API_SCOPE` (default `*`) and `AccessToken::generateNewAccessToken()` forwards it
+  in the `/oauth/token` POST body. No change needed.
+- [x] **Close the silent service-credential-mint fallback (the real Stage 1.5 risk).** Added
+  `allow_service_credential_mint` to `config.php` (env `SIMPLIFI_API_ALLOW_SERVICE_MINT`, default
+  `true`). `AccessToken::generateNewAccessToken()` now checks it before minting: when `false` and
+  the cache misses, it returns a failed `ApiResponse` (via `ApiResponse::fromDecoded()`, no HTTP
+  call made) instead of silently minting a service token under the active `custom_key`. Consumers
+  set this to `false` in the `$overrideConfig` for any per-session/user-context call. See
+  `src/AccessToken.php` and the README's [User-scoped tokens](./README.md#user-scoped-tokens-the-package-never-mints-them)
+  section. Covered by `tests/Feature/ServiceCredentialMintGuardTest.php`.
+- [x] **Document the per-consumer grant matrix** in `README.md` — rewritten to match the corrected
+  model (`login_token` grant for first-party user tokens, exchanged directly by the consumer;
+  `client_credentials` only for the anonymous funnel; `authorization_code + PKCE` for MCP/third-party,
+  not via this package). See README's [Per-consumer grant matrix](./README.md#per-consumer-grant-matrix).
+- [ ] **Verify against API staging** — once the GUI wires the `login_token` exchange, issue a token
+  end-to-end and confirm a per-session config with `allow_service_credential_mint=false` correctly
+  reads it back (and fails closed if the GUI hasn't written one yet). Blocked on GUI Stage 1.5
+  coordination work landing.
+- [x] **Tag a patch** — `1.1.1` (config.php `VERSION`); see `CHANGELOG.md`.
 
 ### What is NOT in Stage 1.5
 
 - No public-surface change (still frozen per the programme's invariant)
-- No new grant types added to the package itself — `authorization_code + PKCE` for MCP is consumed directly against Passport, not via this package
+- No new grant types added to the package itself — neither `login_token` (first-party) nor
+  `authorization_code + PKCE` (MCP) are minted by this package; both are consumed directly against
+  Passport by the consumer
+- No refresh path added to the package — refresh ownership stays with the consumer
+  (`grant_type=refresh_token` directly against `/oauth/token`), per Q5's locked decision
 - No mutex / cache changes — Stage 1 hardening still load-bearing
 
 </details>
 
 ### Acceptance criteria
 
-- ✔️ `SIMPLIFI_API_SCOPE` env var read and forwarded to token requests (or confirmed already supported)
-- ✔️ Verified end-to-end against API staging: password-grant token carries `user_id` and `scopes` claims
-- ✔️ README documents the per-consumer grant matrix
-- ✔️ `1.1.x` patch tagged if code change required; otherwise no version bump
+- ✔️ `SIMPLIFI_API_SCOPE` env var read and forwarded to token requests (already supported)
+- ✔️ A user-context config (`allow_service_credential_mint=false`) fails closed on a cache miss
+  instead of silently minting a service-credential token under the session's cache key
+- ✔️ README documents the corrected per-consumer grant matrix and the user-scoped-token contract
+- ✔️ `1.1.1` patch tagged
+- → End-to-end staging verification of the `login_token` exchange: pending GUI-side Stage 1.5 work
 
 ---
 
@@ -376,7 +412,8 @@ Sequencing matters:
 | Callable hook pattern for cache + mutex         | Stage 1    | Matches existing `get`/`set`/`del` pattern; keeps package framework-agnostic                                                                 |
 | Pest 4.x on PHPUnit 12.x                        | Stage 1    | Matches API repo stack                                                                                                                       |
 | Both-envelope support from Stage 1, not Stage 4 | Stage 1    | API plan's Stage 1 explicitly requires OAuth smoke tests to cover both envelopes ([API_MODERNISATION_PLAN.md:61](API_MODERNISATION_PLAN.md)) |
-| Per-consumer grant matrix                       | Stage 1.5  | First-party (GUI, No Worries, Apex Wealth): `password` + user-scoped tokens + `full_access` scope. Anonymous (password reset, signup): `client_credentials`. Third-party (MCP): `authorization_code + PKCE` — direct against Passport, not via this package |
+| Per-consumer grant matrix                       | Stage 1.5  | First-party user-scoped tokens (GUI, No Worries, Apex Wealth): obtained via the API's `login_token` grant, exchanged **directly by the consumer** against `/oauth/token` (not via this package) and written into a per-session store. Anonymous (password reset, signup, onboarding): `client_credentials` via this package, narrowed scope. Third-party (MCP): `authorization_code + PKCE` — direct against Passport, not via this package. `password` grant is disabled server-side and not used anywhere |
+| No silent service-credential-mint fallback      | Stage 1.5  | `allow_service_credential_mint=false` on a per-session config makes a cache miss fail closed (`ApiResponse`, no HTTP call) rather than minting a service token under that user's cache key — closes an identity-laundering hole the actor/entity model otherwise reopens |
 | Return-don't-throw error model                  | All stages | Existing contract; consumers escalate via `$response->throw()`                                                                               |
 | Single retry on auth exception                  | All stages | Existing behaviour; no exponential backoff                                                                                                   |
 | No observability dashboard for the package      | Stage 4    | Too small to warrant one; metrics flow via GUI event listeners into Pulse                                                                    |
@@ -397,8 +434,8 @@ Sequencing matters:
 | GUI Stage 0 pin to `^1.0`                         | OAuth blocks GUI                                                                             | Stage 0 ✓       |
 | OAuth `grant_type` default flip                   | GUI must declare grant type in every `.env` first; API tier must accept `client_credentials` | Stage 1         |
 | OAuth Stage 1 envelope-shape support              | API Stage 1 needs this                                                                       | Stage 1         |
-| First-party `.env` flip back to `password`        | API Stage 1.5 issues user-scoped tokens for `password` grant; first-party `.env`s set `SIMPLIFI_API_GRANT_TYPE=password` + `SIMPLIFI_API_SCOPE=full_access` | Stage 1.5       |
-| Scope passthrough in token requests               | API Stage 1.5 expects `scope` param in `/oauth/token` POST                                   | Stage 1.5       |
+| First-party user-scoped token acquisition          | API Stage 1.5's `login_token` grant is exchanged **directly by each consumer** against `/oauth/token` (not via this package) and the result is written into a per-session store with `allow_service_credential_mint=false` | Stage 1.5       |
+| Scope passthrough in token requests               | API Stage 1.5 expects `scope` param in `/oauth/token` POST (already supported by this package) | Stage 1.5       |
 | OAuth Stage 1 smoke tests covering both envelopes | API Stage 1 line 61 explicitly references                                                    | Stage 1         |
 | Mutex metrics into Pulse                          | GUI registers listeners; OAuth provides hooks (already exist)                                | Stage 2 onwards |
 | Legacy envelope retirement                        | API Stage 4 Phase 5 triggers OAuth Stage 4 Phase 4                                           | Stage 4         |

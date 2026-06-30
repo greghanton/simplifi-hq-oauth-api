@@ -2,7 +2,7 @@
 
 return (function () {
 
-    $VERSION = '1.1.0';
+    $VERSION = '1.1.1';
 
     return [
 
@@ -46,6 +46,24 @@ return (function () {
          * Scope to request
          */
         'scope' => simplifiHqOauthApiLibEnv('SIMPLIFI_API_SCOPE', '*'),
+
+        /**
+         * Whether AccessToken::generateNewAccessToken() is allowed to mint a fresh token from
+         * THIS config's grant_type/client_id/client_secret/username/password on a cache miss.
+         *
+         * Default true — correct for the global/anonymous `client_credentials` config (password
+         * reset, signup, email verification, etc.), where there is no user identity to lose.
+         *
+         * Set FALSE in the $overrideConfig for any per-session/user-context call (i.e. wherever
+         * 'access_token.custom.custom_key' is keyed to a specific user/session, not the shared
+         * service token). Those tokens are minted elsewhere (the consumer's own login/refresh
+         * flow) and this package only ever reads them. Without this guard, a stale or evicted
+         * per-session cache entry would silently fall through to minting a SERVICE token under
+         * that user's cache key — handing the next request the service account's identity
+         * instead of the user's. With it, a cache miss for a user-context call fails closed
+         * (returns a failed ApiResponse) so the consumer can re-authenticate/refresh instead.
+         */
+        'allow_service_credential_mint' => simplifiHqOauthApiLibEnv('SIMPLIFI_API_ALLOW_SERVICE_MINT', true),
 
         /**
          * URL base EG 'https://api.simplifi.com/'

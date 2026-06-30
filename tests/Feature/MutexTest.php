@@ -82,6 +82,9 @@ class MutexTest
         self::$unlockCalls++;
         unset(self::$locks[$key]);
     }
+
+    /** No-op error_log_function target, so AccessToken's error logging never writes test output. */
+    public static function noop(string $message): void {}
 }
 
 /** Helper to install our fake store into a config array suitable for AccessToken. */

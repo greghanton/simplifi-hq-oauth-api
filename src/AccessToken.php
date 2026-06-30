@@ -81,6 +81,13 @@ class AccessToken
      */
     private static function generateNewAccessToken(bool $andCache = false): ApiResponse|string
     {
+        // Fail closed for user-context configs (allow_service_credential_mint=false) instead of
+        // silently minting a service-credential token under what may be a per-session cache key.
+        // @see config.php 'allow_service_credential_mint'
+        if (! (self::$config['allow_service_credential_mint'] ?? true)) {
+            return self::serviceCredentialMintBlockedResponse();
+        }
+
         // Attempt mutex protection if lock/unlock callables are configured
         $lockAcquired = false;
         if ($andCache && self::hasMutexCallables()) {
@@ -148,6 +155,33 @@ class AccessToken
                 self::releaseLock();
             }
         }
+    }
+
+    /**
+     * Build the failed ApiResponse returned when a user-context config (allow_service_credential_mint=false)
+     * has no usable cached token. No HTTP call is made — this is a pre-flight refusal.
+     *
+     * @see config.php 'allow_service_credential_mint'
+     */
+    private static function serviceCredentialMintBlockedResponse(): ApiResponse
+    {
+        $message = 'No cached access token available, and service-credential minting is disabled '.
+            "for this config ('allow_service_credential_mint' = false). This config is user-context: ".
+            're-authenticate or refresh the token yourself rather than relying on this package to '.
+            'mint a service-credential token in its place.';
+
+        call_user_func(self::getCallableLogFunction(), $message);
+
+        return ApiResponse::fromDecoded(
+            decodedResponse: (object) ['message' => $message],
+            config: self::$config,
+            requestOptions: [],
+            timerStart: microtime(true),
+            httpCode: 401,
+            error: true,
+            errorCode: 401,
+            errorMessage: $message,
+        );
     }
 
     /**

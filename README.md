@@ -16,12 +16,13 @@ This package loads defaults from `config.php` and then reads values from environ
 
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
-| `SIMPLIFI_API_GRANT_TYPE` | No | `client_credentials` | Recommended for server-to-server. `password` is deprecated (OAuth 2.1 / RFC 9700 guidance). |
+| `SIMPLIFI_API_GRANT_TYPE` | No | `client_credentials` | The only grant this package itself can mint. The `password` grant is **disabled server-side** (not just deprecated) — see [Per-consumer grant matrix](#per-consumer-grant-matrix). |
 | `SIMPLIFI_API_CLIENT_ID` | Yes | - | OAuth client id. |
 | `SIMPLIFI_API_CLIENT_SECRET` | Yes | - | OAuth client secret. |
-| `SIMPLIFI_API_USERNAME` | Only for `password` grant | - | Username/email for password grant flows. |
-| `SIMPLIFI_API_PASSWORD` | Only for `password` grant | - | Password for password grant flows. |
-| `SIMPLIFI_API_SCOPE` | No | `*` | OAuth scope. |
+| `SIMPLIFI_API_USERNAME` | No (legacy) | - | Dead unless a future grant reintroduces it; the `password` grant that read this is disabled server-side. |
+| `SIMPLIFI_API_PASSWORD` | No (legacy) | - | Dead alongside `SIMPLIFI_API_USERNAME`, same reason. |
+| `SIMPLIFI_API_SCOPE` | No | `*` | OAuth scope, forwarded as-is to `/oauth/token`. |
+| `SIMPLIFI_API_ALLOW_SERVICE_MINT` | No | `true` | Set `false` on any **per-session/user-context** config (see [User-scoped tokens](#user-scoped-tokens-the-package-never-mints-them)). Leave `true` (default) on the global/anonymous config. |
 | `SIMPLIFI_API_URL_BASE` | Yes | - | API base URL, e.g. `https://api.example.com/`. |
 | `SIMPLIFI_API_ACCESS_TOKEN_STORE_AS` | No | `temp_file` | `custom` is recommended for production, `temp_file` is fine for local/dev. |
 | `SIMPLIFI_API_ACCESS_TOKEN_TEMP_FILE_FILENAME` | No | Derived from project path/version | Only used when `store_as=temp_file`. |
@@ -243,18 +244,68 @@ ApiResponse::addEventListener(ApiResponse::EVENT_RESPONSE_CREATED, function (Api
 
 With Laravel `config:cache`, runtime `env()` calls outside config files return `null`. To keep custom token store and mutex callables reliable under cached config, define `simplifiHqOauthApiEnv()` in your app and read from your own config layer instead of direct runtime `env()`.
 
-## OAuth grant type default and safe rollout
+## Per-consumer grant matrix
 
-Default grant type is now `client_credentials`.
+The API tier's identity model (Stage 1.5) draws a hard line between three kinds of token, and this
+package only ever mints one of them. Use this table to decide how each consumer should be configured:
 
-- `client_credentials` is recommended for server-to-server usage.
-- `password` remains supported but is deprecated.
+| Consumer | Grant this package mints | How the token is bound | Notes |
+| --- | --- | --- | --- |
+| **Anonymous server-to-server** (password reset, signup, email verification, the public login/onboarding front doors) | `client_credentials` via `SIMPLIFI_API_GRANT_TYPE=client_credentials` | No actor — app-level only | This is the **only** flow this package's `AccessToken::generateNewAccessToken()` performs. Use a narrowed service scope (e.g. `svc:auth`/`svc:onboarding`), not `*`, where the client supports it. Cached under the **global** `custom_key`. |
+| **First-party user-scoped** (a logged-in GUI/No Worries/Apex Wealth session) | **Not minted by this package.** The consumer calls `POST /oauth/token` directly with the API's `login_token` grant (exchanging the one-time login token issued at login) to get the user's access token, and `grant_type=refresh_token` to renew it. | Per-session — the consumer writes the token into a **per-session** `custom_key` (see [User-scoped tokens](#user-scoped-tokens-the-package-never-mints-them)) | `password` is **disabled server-side** — do not configure it for this case. This package only ever *reads* the token the consumer already obtained. |
+| **Third-party / MCP / AI integrations** | Not via this package at all | `authorization_code + PKCE`, entity-bound | These consumers talk to Passport's authorization-code flow directly; listed here for completeness only. |
 
-To avoid breaking existing GUI environments that may have implicitly relied on the old default:
+## User-scoped tokens: the package never mints them
 
-1. In every consumer environment, set `SIMPLIFI_API_GRANT_TYPE` explicitly before upgrading.
-2. Confirm the API tier Passport client is allowed to use `client_credentials`.
-3. Upgrade this package.
+Per the Stage 1.5 identity model, **the GUI/consumer owns acquiring and refreshing user-scoped
+tokens; this package only owns using them.** Concretely:
+
+1. At login, the consumer exchanges its one-time login token for a user-scoped access + refresh
+   token pair directly against `/oauth/token` (`grant_type=login_token`), outside this package.
+2. The consumer writes that token into a **per-session** `custom` store — i.e. a `custom_key` that
+   is unique per user session, not the shared service-token key — using the same `get`/`set`/`del`
+   callable hooks described above ([Redis setup](#redis-setup-via-custom-callables)).
+3. The consumer calls `ApiRequest::request($options, $overrideConfig)` with `$overrideConfig`
+   pointing `access_token.custom.custom_key` (and `get`/`set`/`del`) at that per-session store.
+4. **`$overrideConfig` must also set `'allow_service_credential_mint' => false`.**
+
+That last step matters: without it, if the per-session cache entry is missing or expired (token
+revoked, refresh not yet run, cache evicted), `AccessToken::generateNewAccessToken()` would fall
+through to minting a *service* (`client_credentials`) token from the global
+`client_id`/`client_secret` — and cache it under that user's session key. The next request would
+then silently run **as the service account** while believing it was acting as that user — exactly
+the identity-laundering hole the Stage 1.5 model closes. With `allow_service_credential_mint=false`
+set, a cache miss on a user-context config fails closed instead: `ApiRequest::request()` returns a
+non-success `ApiResponse` (no HTTP call is made), and the consumer should re-authenticate or run its
+own refresh flow rather than receive a token at all.
+
+```php
+<?php
+
+use SimplifiApi\ApiRequest;
+
+// Per-session config for an authenticated user — set once after login/refresh writes the
+// token into Redis under $sessionCustomKey.
+$response = ApiRequest::request(
+    ['method' => 'GET', 'url' => 'sales'],
+    [
+        'access_token' => [
+            'store_as' => 'custom',
+            'custom' => [
+                'custom_key' => $sessionCustomKey,
+                'get' => ['App\\Cache\\TokenStore', 'get'],
+                'set' => ['App\\Cache\\TokenStore', 'set'],
+                'del' => ['App\\Cache\\TokenStore', 'del'],
+            ],
+        ],
+        'allow_service_credential_mint' => false,
+    ]
+);
+```
+
+Leave `allow_service_credential_mint` unset (defaults `true`) on the global/anonymous config used
+for `client_credentials` calls — there is no user identity to protect there, and that path is
+exactly what `generateNewAccessToken()` is for.
 
 ## Development
 
@@ -267,4 +318,5 @@ composer run test
 ## Docs
 
 - [Modernisation plan](./OAUTH_MODERNISATION_PLAN.md)
+- [Stage 1.5 — Identity & Scopes (cross-repo source of truth)](./STAGE1-5_MODERNISATION_PLAN.md)
 
