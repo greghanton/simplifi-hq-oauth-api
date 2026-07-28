@@ -422,7 +422,11 @@ class ApiResponse implements ApiResponseInterface
             'requestTime' => $this->requestTime,
             'requestOptions' => $this->getRequestOptions($anonymise),
             'response' => $this->isJson($response) ? json_decode($response) : $response,
+            'errors' => $this->errorsToString(),
             'caller' => $caller ?: null,
+            'proxy_env' => array_filter([getenv('http_proxy'), getenv('https_proxy'), getenv('HTTPS_PROXY')]),
+            'cainfo' => ini_get('curl.cainfo') ?: ini_get('openssl.cafile'),
+            'open_basedir' => ini_get('open_basedir'),
         ];
 
         if ($anonymise) {
