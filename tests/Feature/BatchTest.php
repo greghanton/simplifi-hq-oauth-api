@@ -5,6 +5,7 @@ declare(strict_types=1);
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use SimplifiApi\AsyncClient;
 
@@ -105,4 +106,29 @@ it('batch() returns a non-success response when an upstream returns 5xx', functi
 
     expect($responses[0]->success())->toBeFalse()
         ->and($responses[0]->errors())->not->toBeEmpty();
+});
+
+it('batch() asks curl to multiplex its requests over one connection, but a single request does not', function () {
+    $config = batchTestConfig();
+    $history = [];
+    $stack = HandlerStack::create(new MockHandler([
+        new Response(200, ['Content-Type' => 'application/json'], json_encode(['data' => []])),
+        new Response(200, ['Content-Type' => 'application/json'], json_encode(['data' => []])),
+        new Response(200, ['Content-Type' => 'application/json'], json_encode(['data' => []])),
+    ]));
+    $stack->push(Middleware::history($history));
+    (new ReflectionProperty(AsyncClient::class, 'client'))->setValue(null, new Client(['handler' => $stack, 'http_errors' => false]));
+    (new ReflectionProperty(AsyncClient::class, 'config'))->setValue(null, $config);
+
+    $request = ['method' => 'GET', 'url' => 'sales/1', 'headers' => [], 'data' => [], 'response-type' => 'json'];
+
+    AsyncClient::batch([$request, $request], $config);
+    AsyncClient::request($request, $config);
+
+    $expected = [CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_2TLS, CURLOPT_PIPEWAIT => 1];
+
+    expect($history)->toHaveCount(3)
+        ->and($history[0]['options']['curl'])->toBe($expected)
+        ->and($history[1]['options']['curl'])->toBe($expected)
+        ->and($history[2]['options'])->not->toHaveKey('curl');
 });

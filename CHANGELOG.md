@@ -2,6 +2,15 @@
 
 All notable changes to `greghanton/simplifi-hq-oauth-api` are documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- `AsyncClient::batch()` sends its requests over one HTTP/2 connection when the server supports
+  it. Each request used to open its own connection: with curl 8.5 and OpenSSL 3.0, 15 requests
+  spent about 760ms on connection setup, against about 56ms multiplexed. Plain `http://` and
+  servers without HTTP/2 stay on HTTP/1.1, and single requests are unchanged.
+
 ## [1.1.1] - 2026-06-30
 
 Stage 1.5 (Identity coordination) — see `OAUTH_MODERNISATION_PLAN.md` and
