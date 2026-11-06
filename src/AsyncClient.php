@@ -114,6 +114,11 @@ class AsyncClient
             return [];
         }
 
+        // Asking a libcurl built without HTTP/2 for it makes curl_setopt fail, which Guzzle doesn't check.
+        if (! (curl_version()['features'] & CURL_VERSION_HTTP2)) {
+            return [];
+        }
+
         return [
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_2TLS,
             CURLOPT_PIPEWAIT => 1,
