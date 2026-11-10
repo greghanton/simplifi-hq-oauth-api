@@ -2,7 +2,7 @@
 
 All notable changes to `greghanton/simplifi-hq-oauth-api` are documented in this file.
 
-## [Unreleased]
+## [1.1.3] - 2026-11-10
 
 ### Changed
 
